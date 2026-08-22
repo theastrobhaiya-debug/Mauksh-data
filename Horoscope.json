@@ -1,37 +1,27 @@
-Daily Horoscope for 23 August 2026
+{
+  "date": "23 August 2026",
 
-♈ Aries: New ideas bring career momentum.
-Avoid rushing important decisions.
+  "aries": "<h3>♈ Aries</h3><p>🔥 Energy: Family First, Growth Next</p><p>💼 Career: Aaj business aur professional matters me positive movement aa sakti hai. Kisi pending discussion ko practical solution mil sakta hai. Confidence rakho, lekin unnecessary haste avoid karo.</p><p>❤️ Love: Family bonding aur emotional comfort strong rahenge. Couples future plans ko lekar optimistic feel kar sakte hain. Singles ko familiar circle se interesting connection mil sakta hai.</p><p>💰 Money: Business ya family-related financial benefit possible hai. Jo gain mile usse wisely manage karo.</p><p>🧘 Advice: Growth ke saath gratitude bhi rakho.</p><p class=\"truth\">⚡ Mauksh Truth: Jab tumhari progress tumhare apno ki peace ke saath grow karti hai, tab success aur meaningful ban jaati hai.</p>",
 
-♉ Taurus: Finances need careful planning.
-A family matter brings clarity.
+  "taurus": "<h3>♉ Taurus</h3><p>🔥 Energy: Reconnect & Reassess</p><p>💼 Career: Aaj thoda slow pace tumhare liye beneficial ho sakta hai. Planning, pending paperwork aur future strategy par focus karo. Har opportunity ko immediately accept karna zaruri nahi.</p><p>❤️ Love: Relationship me reassurance aur patience ki zarurat hogi. Singles ko kisi connection ke intentions samajhne ke liye time dena chahiye.</p><p>💰 Money: Financial commitments ko carefully review karo. Emotional spending avoid karo.</p><p>🧘 Advice: Slow down without feeling behind.</p><p class=\"truth\">⚡ Mauksh Truth: Har pause progress ka opposite nahi hota; kabhi pause hi tumhe better decision lene ki space deta hai.</p>",
 
-♊ Gemini: Communication opens new doors.
-Stay focused on practical priorities.
+  "gemini": "<h3>♊ Gemini</h3><p>🔥 Energy: Courage Brings Results</p><p>💼 Career: Aaj communication, confidence aur initiative tumhari strengths rahengi. Kisi creative idea ko practical form dene ka chance milega. Important conversation se progress ho sakti hai.</p><p>❤️ Love: Romance aur emotional warmth supportive rahegi. Singles ko kisi conversation me unexpected attraction feel ho sakta hai.</p><p>💰 Money: Financial matters me positive movement possible hai, especially through a smart decision or creative work.</p><p>🧘 Advice: Jo opportunity samne hai usse sirf overthinking ki wajah se miss mat karo.</p><p class=\"truth\">⚡ Mauksh Truth: Courage ka matlab fear ka absence nahi, fear ke bawajood right step lena hai.</p>",
 
-♋ Cancer: Emotional matters feel lighter.
-Trust your instincts in personal choices.
+  "cancer": "<h3>♋ Cancer</h3><p>🔥 Energy: Close Old Loops</p><p>💼 Career: Aaj pending responsibility complete karne ka strong chance hai. Jo kaam unnecessarily delay ho raha tha usme closure mil sakta hai. Team support bhi helpful rahega.</p><p>❤️ Love: Partner ka support emotionally reassuring rahega. Singles ko kisi old connection se fresh conversation mil sakti hai.</p><p>💰 Money: Existing financial matter me clarity aa sakti hai. Old dues ya pending payment ka follow-up useful rahega.</p><p>🧘 Advice: Closure ko underestimate mat karo.</p><p class=\"truth\">⚡ Mauksh Truth: Kabhi next chapter ki sabse important preparation ek purana chapter properly close karna hoti hai.</p>",
 
-♌ Leo: Confidence attracts attention.
-Focus on meaningful goals today.
+  "leo": "<h3>♌ Leo</h3><p>🔥 Energy: Your Influence Grows</p><p>💼 Career: Aaj social influence aur professional visibility improve ho sakti hai. Networking, meetings aur public interaction me tumhari presence noticeable rahegi. Unexpected opportunity bhi mil sakti hai.</p><p>❤️ Love: Relationship me confidence aur warmth strong rahengi. Singles attention attract kar sakte hain, but genuine connection ko preference do.</p><p>💰 Money: Unexpected gain ya useful financial opportunity possible hai.</p><p>🧘 Advice: Attention ko meaningful opportunity me convert karo.</p><p class=\"truth\">⚡ Mauksh Truth: Influence ka real value tab hota hai jab tum usse sirf impress karne ke liye nahi, create karne ke liye use karte ho.</p>",
 
-♍ Virgo: Work rewards organized effort.
-Avoid overthinking relationships.
+  "virgo": "<h3>♍ Virgo</h3><p>🔥 Energy: Inner Clarity</p><p>💼 Career: Aaj external noise se thoda distance lekar strategy rethink karna useful rahega. Research, planning aur behind-the-scenes preparation future growth ke liye valuable hogi.</p><p>❤️ Love: Emotional expectations ko realistic rakho. Couples ko personal space aur honest communication dono maintain karne chahiye.</p><p>💰 Money: Hidden expenses ya unnecessary subscriptions identify karo. Saving par focus beneficial rahega.</p><p>🧘 Advice: Har cheez ka immediate answer zaruri nahi.</p><p class=\"truth\">⚡ Mauksh Truth: Clarity aksar tab aati hai jab tum noise ko kam karke apni actual needs sunte ho.</p>",
 
-♎ Libra: Partnerships need honest dialogue.
-Cooperation can restore balance.
+  "libra": "<h3>♎ Libra</h3><p>🔥 Energy: Supportive People, Bigger Vision</p><p>💼 Career: Networking aur collaboration se future opportunity build ho sakti hai. Kisi friend, colleague ya professional contact ka suggestion valuable ho sakta hai.</p><p>❤️ Love: Friendship aur relationship ke beech warmth strong rahegi. Singles ko social circle se meaningful connection mil sakta hai.</p><p>💰 Money: Long-term financial goal ke liye useful planning ho sakti hai.</p><p>🧘 Advice: Right people ko apni journey ka part banne do.</p><p class=\"truth\">⚡ Mauksh Truth: Har journey solo complete karna strength nahi; kabhi right people ke saath chalna wisdom hoti hai.</p>",
 
-♏ Scorpio: Career responsibilities increase.
-Stay patient with financial matters.
+  "scorpio": "<h3>♏ Scorpio</h3><p>🔥 Energy: Expand Your Horizon</p><p>💼 Career: Aaj learning, travel, strategy aur future expansion ke ideas strong rahenge. Kisi experienced person ki guidance tumhe better direction de sakti hai.</p><p>❤️ Love: Couples future plans ya spiritual interests share kar sakte hain. Singles ko different background wale person me attraction ho sakta hai.</p><p>💰 Money: Education, travel ya skill-building par thoughtful spending worthwhile ho sakti hai.</p><p>🧘 Advice: Bigger picture dekho, but practical steps mat chhodo.</p><p class=\"truth\">⚡ Mauksh Truth: Growth tab real hoti hai jab tumhari duniya sirf badi nahi, tumhari understanding bhi deeper hoti hai.</p>",
 
-♐ Sagittarius: Learning brings fresh insight.
-A personal decision gains clarity.
+  "sagittarius": "<h3>♐ Sagittarius</h3><p>🔥 Energy: Your Day To Move Forward</p><p>💼 Career: Aaj confidence, communication aur professional initiative strong rahenge. Kisi important project ko push karne ya leadership lene ka right moment ho sakta hai.</p><p>❤️ Love: Relationship me optimism aur openness rahegi. Singles ko social interaction se positive attention mil sakti hai.</p><p>💰 Money: Financial opportunity aur business-related progress possible hai, but overspending avoid karo.</p><p>🧘 Advice: Opportunity ko action do, sirf excitement nahi.</p><p class=\"truth\">⚡ Mauksh Truth: Jab life tumhe forward movement de, hesitation ko permanent habit mat banne do.</p>",
 
-♑ Capricorn: Shared finances need caution.
-Avoid unnecessary commitments.
+  "capricorn": "<h3>♑ Capricorn</h3><p>🔥 Energy: Don't Force The Outcome</p><p>💼 Career: Aaj behind-the-scenes planning aur pending details complete karna better rahega than forcing visible progress. Kisi hidden issue ko identify karke future problem avoid kar sakte ho.</p><p>❤️ Love: Emotional sensitivity high ho sakti hai. Partner ke behaviour ko overanalyse mat karo. Singles ko old attachment se clarity mil sakti hai.</p><p>💰 Money: Unnecessary financial risk avoid karo. Confidential financial matters carefully handle karo.</p><p>🧘 Advice: Har result ko immediately control karne ki koshish mat karo.</p><p class=\"truth\">⚡ Mauksh Truth: Kuch answers tab milte hain jab tum unhe force karna band kar dete ho.</p>",
 
-♒ Aquarius: Social connections prove useful.
-Choose opportunities thoughtfully.
+  "aquarius": "<h3>♒ Aquarius</h3><p>🔥 Energy: New People, New Possibilities</p><p>💼 Career: Aaj networking aur community connections se useful opportunity mil sakti hai. Kisi group, friend ya professional contact ke through new direction emerge ho sakti hai.</p><p>❤️ Love: Social energy positive rahegi. Singles friendship se romantic possibility develop kar sakte hain. Couples shared plans enjoy karenge.</p><p>💰 Money: Financial gain ya useful business lead possible hai.</p><p>🧘 Advice: Apne circle ko intentionally expand karo.</p><p class=\"truth\">⚡ Mauksh Truth: Kabhi life ka next level kisi new skill se nahi, kisi new person se introduce hota hai.</p>",
 
-♓ Pisces: Rest improves mental clarity.
-Finish pending work calmly.
+  "pisces": "<h3>♓ Pisces</h3><p>🔥 Energy: Finish & Feel Lighter</p><p>💼 Career: Aaj old pending work complete hone se mental pressure reduce hoga. Professional responsibility me appreciation mil sakti hai. Jo kaam avoid kar rahe the usse finally handle karo.</p><p>❤️ Love: Emotional mood positive rahega. Couples ko partner ya children ki taraf se support mil sakta hai. Singles ko old connection se positive development mil sakti hai.</p><p>💰 Money: Financially relief ya useful progress possible hai.</p><p>🧘 Advice: Completion ke baad rest bhi allow karo.</p><p class=\"truth\">⚡ Mauksh Truth: Har unfinished task tumhari energy ka ek small portion consume karta hai; closure bhi healing hoti hai.</p>"
+}
