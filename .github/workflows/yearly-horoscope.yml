@@ -1,0 +1,39 @@
+name: Yearly Horoscope
+
+on:
+  schedule:
+    # December 1st every year at 8:00 AM IST
+    - cron: "30 2 1 12 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-yearly:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install openai
+
+      - name: Generate yearly horoscope
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/generate_yearly_horoscope.py
+
+      - name: Commit yearly horoscope
+        run: |
+          git config user.name "Mauksh Horoscope Bot"
+          git config user.email "actions@github.com"
+          git add Horoscope3.json
+          git diff --cached --quiet || git commit -m "Update yearly horoscope"
+          git push
