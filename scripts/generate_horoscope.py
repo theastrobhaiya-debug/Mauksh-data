@@ -57,7 +57,7 @@ Before returning the JSON, internally check that:
 """
 
 response = client.responses.create(
-    model="gpt-5.6",
+    model="gpt-5.1",
     tools=[{"type": "web_search"}],
     input=prompt
 )
