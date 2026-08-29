@@ -1,8 +1,7 @@
 name: Daily Horoscope
 
 on:
-  schedule:
-    - cron: "30 14 * * *"
+
   workflow_dispatch:
 
 permissions:
