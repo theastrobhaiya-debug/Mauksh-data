@@ -79,7 +79,7 @@ sidereal planetary situation affects that sign.
 
 WRITING STYLE
 -------------
-Write in natural, polished Hinglish.
+Write in natural, polished English.
 
 The tone should feel like a knowledgeable human astrologer speaking
 directly to the reader.
