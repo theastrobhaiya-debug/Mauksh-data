@@ -1,16 +1,16 @@
 import os
+import re
 import requests
 from datetime import datetime
 from openai import OpenAI
 
 
 # ============================================================
-# CONFIGURATION
+# API KEYS
 # ============================================================
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 BUFFER_API_KEY = os.environ["BUFFER_API_KEY"]
-
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -18,15 +18,21 @@ BUFFER_URL = "https://api.buffer.com"
 
 
 # ============================================================
-# GENERATE HOROSCOPE
+# DATE
 # ============================================================
 
 today = datetime.now().strftime("%d %B %Y")
 
+
+# ============================================================
+# HOROSCOPE PROMPT
+# ============================================================
+
 prompt = f"""
 You are the official horoscope writer for Mauksh.
 
-Generate a daily Vedic astrology-inspired horoscope specifically for Threads.
+Generate a daily Vedic astrology-inspired horoscope specifically
+for Threads.
 
 Date: {today}
 
@@ -64,9 +70,11 @@ WRITING RULES:
 - Keep each zodiac sign to 1–2 short sentences.
 - Make predictions meaningful and specific.
 - Do NOT write generic motivational advice.
-- Do NOT use filler such as "stay positive", "good things are coming", "believe in yourself", or "avoid distractions".
+- Do NOT use filler such as "stay positive", "good things are coming",
+  "believe in yourself", or "avoid distractions".
 - Give each zodiac sign a different situation, development, or theme.
-- Naturally cover areas such as career, money, relationships, family, communication, travel, learning, decisions and opportunities.
+- Naturally cover areas such as career, money, relationships, family,
+  communication, travel, learning, decisions and opportunities.
 - Make the predictions feel like an actual horoscope, not life advice.
 - Keep the language natural and human.
 - Avoid repeating the same sentence structure for every sign.
@@ -77,6 +85,11 @@ WRITING RULES:
 - Do not change the title.
 - Return ONLY the finished Threads post.
 """
+
+
+# ============================================================
+# GENERATE HOROSCOPE
+# ============================================================
 
 print("Generating horoscope...")
 
@@ -94,19 +107,101 @@ print("Horoscope generated successfully.")
 
 
 # ============================================================
-# BUFFER GRAPHQL HELPER
+# SPLIT HOROSCOPE INTO THREAD POSTS
 # ============================================================
 
-def buffer_request(query):
+def split_into_thread(text, max_chars=480):
+
+    lines = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip()
+    ]
+
+    posts = []
+    current = ""
+
+    for line in lines:
+
+        # A zodiac line should ideally stay together.
+        candidate = (
+            line
+            if not current
+            else current + "\n\n" + line
+        )
+
+        if len(candidate) <= max_chars:
+            current = candidate
+            continue
+
+        if current:
+            posts.append(current)
+
+        # If a single line itself is too long,
+        # split it safely by words.
+        if len(line) > max_chars:
+
+            words = line.split()
+            chunk = ""
+
+            for word in words:
+
+                candidate_word = (
+                    word
+                    if not chunk
+                    else chunk + " " + word
+                )
+
+                if len(candidate_word) <= max_chars:
+                    chunk = candidate_word
+                else:
+                    if chunk:
+                        posts.append(chunk)
+
+                    chunk = word
+
+            current = chunk
+
+        else:
+            current = line
+
+    if current:
+        posts.append(current)
+
+    return posts
+
+
+thread_posts = split_into_thread(horoscope)
+
+print("")
+print("Thread posts created:", len(thread_posts))
+
+for i, post in enumerate(thread_posts, 1):
+    print("")
+    print(f"--- THREAD POST {i} ({len(post)} chars) ---")
+    print(post)
+
+
+# ============================================================
+# BUFFER REQUEST HELPER
+# ============================================================
+
+def buffer_request(query, variables=None):
+
+    payload = {
+        "query": query
+    }
+
+    if variables is not None:
+        payload["variables"] = variables
+
     response = requests.post(
         BUFFER_URL,
         headers={
             "Authorization": f"Bearer {BUFFER_API_KEY}",
             "Content-Type": "application/json",
         },
-        json={
-            "query": query
-        },
+        json=payload,
         timeout=30,
     )
 
@@ -126,6 +221,7 @@ def buffer_request(query):
 # FIND BUFFER ORGANIZATION
 # ============================================================
 
+print("")
 print("Finding Buffer organization...")
 
 organization_query = """
@@ -150,8 +246,7 @@ organizations = (
 
 if not organizations:
     raise RuntimeError(
-        "No Buffer organization found. "
-        "Make sure your Buffer account and API key are correct."
+        "No Buffer organization found."
     )
 
 organization_id = organizations[0]["id"]
@@ -168,23 +263,27 @@ print(
 
 print("Finding connected Threads channel...")
 
-channels_query = f"""
-query {{
+channels_query = """
+query GetChannels($organizationId: OrganizationId!) {
     channels(
-        input: {{
-            organizationId: "{organization_id}"
-        }}
-    ) {{
+        input: {
+            organizationId: $organizationId
+        }
+    ) {
         id
         name
         displayName
         service
-        descriptor
-    }}
-}}
+    }
+}
 """
 
-channels_data = buffer_request(channels_query)
+channels_data = buffer_request(
+    channels_query,
+    {
+        "organizationId": organization_id
+    }
+)
 
 channels = (
     channels_data
@@ -192,27 +291,32 @@ channels = (
     .get("channels", [])
 )
 
-threads_channels = [
-    channel
-    for channel in channels
-    if str(channel.get("service", "")).lower() == "threads"
-]
+threads_channel = None
 
-if not threads_channels:
-    print("Connected Buffer channels:")
+for channel in channels:
+
+    if str(channel.get("service", "")).lower() == "threads":
+        threads_channel = channel
+        break
+
+
+if threads_channel is None:
+
+    print("Available Buffer channels:")
 
     for channel in channels:
         print(
-            f"- {channel.get('service')}: "
-            f"{channel.get('name') or channel.get('displayName')}"
+            "-",
+            channel.get("service"),
+            "|",
+            channel.get("name")
+            or channel.get("displayName")
         )
 
     raise RuntimeError(
-        "No Threads channel was found in Buffer. "
-        "Connect your Threads account to Buffer first."
+        "No Threads channel found."
     )
 
-threads_channel = threads_channels[0]
 
 channel_id = threads_channel["id"]
 
@@ -220,41 +324,66 @@ print(
     "Threads channel found:",
     threads_channel.get("name")
     or threads_channel.get("displayName")
-    or threads_channels[0].get("descriptor")
 )
 
 
 # ============================================================
-# CREATE BUFFER POST
+# CREATE THREAD
 # ============================================================
 
-print("Sending horoscope to Buffer...")
+print("")
+print("Sending horoscope thread to Buffer...")
 
-# GraphQL strings need escaped quotes/backslashes.
-safe_horoscope = (
-    horoscope
-    .replace("\\", "\\\\")
-    .replace('"', '\\"')
-    .replace("\r", "")
-    .replace("\n", "\\n")
-)
 
-post_mutation = f"""
-mutation {{
+# Escape values for GraphQL.
+def graphql_escape(value):
+    return (
+        value
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\r", "")
+        .replace("\n", "\\n")
+    )
+
+
+thread_items = []
+
+for post in thread_posts:
+
+    escaped = graphql_escape(post)
+
+    thread_items.append(
+        f'{{ text: "{escaped}" }}'
+    )
+
+
+thread_array = "\n".join(thread_items)
+
+first_post = graphql_escape(thread_posts[0])
+
+
+mutation = f"""
+mutation CreateThread {{
     createPost(
         input: {{
-            text: "{safe_horoscope}"
+            text: "{first_post}"
             channelId: "{channel_id}"
             schedulingType: automatic
             mode: shareNow
+            metadata: {{
+                threads: {{
+                    thread: [
+                        {thread_array}
+                    ]
+                }}
+            }}
         }}
     ) {{
         ... on PostActionSuccess {{
             post {{
                 id
-                text
-                dueAt
                 status
+                text
             }}
         }}
 
@@ -265,33 +394,48 @@ mutation {{
 }}
 """
 
-post_data = buffer_request(post_mutation)
 
-create_post_result = (
-    post_data
+result = buffer_request(mutation)
+
+
+# ============================================================
+# CHECK RESULT
+# ============================================================
+
+create_result = (
+    result
     .get("data", {})
     .get("createPost", {})
 )
 
-if "message" in create_post_result:
+if "message" in create_result:
+
     raise RuntimeError(
-        "Buffer could not create the post: "
-        + str(create_post_result["message"])
+        "Buffer could not create thread: "
+        + str(create_result["message"])
     )
 
-post = create_post_result.get("post")
+
+post = create_result.get("post")
 
 if not post:
+
     raise RuntimeError(
-        "Buffer did not return a created post."
-        + str(create_post_result)
+        "Buffer did not return a created thread."
+        + str(create_result)
     )
 
+
+# ============================================================
+# SUCCESS
+# ============================================================
+
+print("")
 print("========================================")
 print("SUCCESS")
 print("========================================")
 print("Buffer Post ID:", post.get("id"))
 print("Status:", post.get("status"))
-print("Due At:", post.get("dueAt"))
-print("The horoscope has been sent to Buffer.")
+print("Thread posts:", len(thread_posts))
+print("Mauksh horoscope sent to Buffer.")
 print("========================================")
