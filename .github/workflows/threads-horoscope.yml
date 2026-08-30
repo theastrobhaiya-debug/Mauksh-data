@@ -16,12 +16,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install OpenAI
         run: |
-          pip install openai
+          pip install --upgrade openai
 
-      - name: Generate horoscope
+      - name: Generate Mauksh Daily Horoscope
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python threads_horoscope.py
+          python scripts/threads_horoscope.py
