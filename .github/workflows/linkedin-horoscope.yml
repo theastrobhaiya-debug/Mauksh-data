@@ -1,0 +1,28 @@
+name: Mauksh LinkedIn Daily Horoscope
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linkedin-horoscope:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install openai requests
+
+      - name: Post Daily Horoscope to LinkedIn
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        run: |
+          python scripts/linkedin_horoscope.py
