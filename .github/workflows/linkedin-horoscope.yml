@@ -1,4 +1,4 @@
-name: Mauksh LinkedIn Daily Horoscope
+name: Mauksh LinkedIn Daily Career Horoscope
 
 on:
   workflow_dispatch:
@@ -18,11 +18,13 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install openai requests
 
-      - name: Post Daily Horoscope to LinkedIn
+      - name: Generate and post LinkedIn horoscope
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
         run: |
           python scripts/linkedin_horoscope.py
