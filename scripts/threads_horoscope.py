@@ -163,8 +163,7 @@ NEW CONSEQUENCE
 FORMAT
 ============================================================
 
-Mauksh Daily Horoscope
-{today}
+Daily Horoscope for {today}
 
 ♈ Aries: [prediction]
 
