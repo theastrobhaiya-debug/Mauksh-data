@@ -441,11 +441,12 @@ def publish_to_buffer(image_url):
                     }
                 }
             ],
-            "metadata": {
-                "instagram": {
-                    "type": "post"
-                }
-            },
+         "metadata": {
+    "instagram": {
+        "type": "post",
+        "shouldShareToFeed": True
+    }
+},
         }
     }
 
