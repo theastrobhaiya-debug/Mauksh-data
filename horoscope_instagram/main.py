@@ -12,16 +12,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 # ==================================================
 # MAUKSH DAILY HOROSCOPE
-# English | Golden theme | 12 signs | Instagram
-# Temporary image hosting: Picrd
-# Publishing: Buffer API, shareNow
 # ==================================================
 
 TZ = ZoneInfo("Asia/Kolkata")
 TODAY = datetime.now(TZ)
 
 WIDTH, HEIGHT = 1080, 1350
-
 GOLD = (255, 210, 70)
 DARK = (45, 29, 8)
 CARD = (255, 246, 215)
@@ -51,17 +47,13 @@ SIGNS = [
 
 def get_font(size, bold=False):
     candidates = [
-        (
-            "/usr/share/fonts/truetype/dejavu/"
-            + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf")
-        ),
-        (
-            "/usr/share/fonts/truetype/liberation2/"
-            + (
-                "LiberationSans-Bold.ttf"
-                if bold
-                else "LiberationSans-Regular.ttf"
-            )
+        "/usr/share/fonts/truetype/dejavu/"
+        + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
+        "/usr/share/fonts/truetype/liberation2/"
+        + (
+            "LiberationSans-Bold.ttf"
+            if bold
+            else "LiberationSans-Regular.ttf"
         ),
     ]
 
@@ -73,31 +65,31 @@ def get_font(size, bold=False):
 
 
 # ==================================================
-# GENERATE HOROSCOPES WITH OPENAI
+# OPENAI: GENERATE 12 HOROSCOPES
 # ==================================================
 
 def generate_horoscopes():
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     prompt = f"""
-Create daily horoscopes in English for {TODAY.strftime('%d %B %Y')}.
+Write daily horoscopes in English for
+{TODAY.strftime('%d %B %Y')}.
 
 Brand: Mauksh.
-Tone: practical, warm, clear, grounded and encouraging.
-Write 18 to 24 words for each sign.
-Give every sign distinct daily guidance.
-Avoid fear, guaranteed predictions and claims of certainty.
-Do not invent or claim specific planetary transits.
-No Hindi, Hinglish, emojis, hashtags or markdown.
+Tone: practical, warm, grounded, encouraging.
+Write 18-24 words for each zodiac sign.
+Give each sign distinct daily guidance.
+Avoid fear, guaranteed outcomes, and invented planetary transits.
+No Hindi, Hinglish, emojis, hashtags, or markdown.
 
-Return only valid JSON:
+Return only valid JSON in this format:
 {{
   "horoscopes": [
-    {{"sign": "ARIES", "text": "Daily guidance here"}}
+    {{"sign": "ARIES", "text": "Daily guidance"}}
   ]
 }}
 
-Return exactly these 12 signs in this order:
+Return exactly these signs in this order:
 ARIES, TAURUS, GEMINI, CANCER, LEO, VIRGO,
 LIBRA, SCORPIO, SAGITTARIUS, CAPRICORN,
 AQUARIUS, PISCES.
@@ -117,48 +109,36 @@ AQUARIUS, PISCES.
     horoscopes = data.get("horoscopes", [])
 
     if len(horoscopes) != 12:
-        raise ValueError("OpenAI did not return exactly 12 horoscopes.")
+        raise ValueError("Expected exactly 12 horoscopes.")
 
     for i, item in enumerate(horoscopes):
-        expected_sign = SIGNS[i][0]
-        actual_sign = str(item.get("sign", "")).upper()
-        horoscope_text = str(item.get("text", "")).strip()
+        if str(item.get("sign", "")).upper() != SIGNS[i][0]:
+            raise ValueError(f"Incorrect zodiac sign at position {i + 1}.")
 
-        if actual_sign != expected_sign:
-            raise ValueError(
-                f"Expected {expected_sign}, received {actual_sign}."
-            )
+        if not str(item.get("text", "")).strip():
+            raise ValueError(f"Missing horoscope for {SIGNS[i][0]}.")
 
-        if not horoscope_text:
-            raise ValueError(f"Missing horoscope for {expected_sign}.")
-
-    print("Generated and validated all 12 horoscopes.")
+    print("All 12 horoscopes generated.")
     return horoscopes
 
 
 # ==================================================
-# CREATE THE GOLDEN MAUKSH POSTER
+# CREATE GOLDEN MAUKSH IMAGE
 # ==================================================
 
 def create_poster(horoscopes):
     image = Image.new("RGB", (WIDTH, HEIGHT), GOLD)
     draw = ImageDraw.Draw(image)
 
-    # Simple golden background accents
     draw.arc(
         (-180, -180, 250, 250),
-        0, 270,
-        fill=(232, 168, 30),
-        width=5,
+        0, 270, fill=(232, 168, 30), width=5
     )
     draw.arc(
         (850, 1130, 1260, 1540),
-        180, 360,
-        fill=(232, 168, 30),
-        width=5,
+        180, 360, fill=(232, 168, 30), width=5
     )
 
-    # Brand
     draw.text(
         (WIDTH // 2, 22),
         "mauksh.com",
@@ -173,8 +153,6 @@ def create_poster(horoscopes):
         fill=DARK,
         anchor="mt",
     )
-
-    # Requested title and date
     draw.text(
         (WIDTH // 2, 116),
         "MAUKSH DAILY HOROSCOPE",
@@ -197,11 +175,9 @@ def create_poster(horoscopes):
         anchor="mt",
     )
 
-    # 3 columns x 4 rows
     margin_x = 55
     gap_x = 14
     card_w = (WIDTH - 2 * margin_x - 2 * gap_x) // 3
-
     top = 270
     gap_y = 12
     card_h = 226
@@ -209,7 +185,6 @@ def create_poster(horoscopes):
     for index, item in enumerate(horoscopes):
         col = index % 3
         row = index // 3
-
         x = margin_x + col * (card_w + gap_x)
         y = top + row * (card_h + gap_y)
 
@@ -260,6 +235,7 @@ def create_poster(horoscopes):
             lines[-1] = lines[-1].rstrip(" .,;:") + "..."
 
         yy = y + 82
+
         for line in lines:
             draw.text(
                 (x + 17, yy),
@@ -269,7 +245,6 @@ def create_poster(horoscopes):
             )
             yy += 24
 
-    # Footer
     draw.text(
         (WIDTH // 2, 1239),
         "mauksh.com",
@@ -286,65 +261,19 @@ def create_poster(horoscopes):
     )
 
     image.save(OUTPUT_PATH, "JPEG", quality=94, optimize=True)
-    print(f"Poster created: {OUTPUT_PATH}")
+    print("Poster created.")
     return OUTPUT_PATH
 
 
 # ==================================================
-# UPLOAD TO PICRD TEMPORARY PUBLIC HOSTING
-# ==================================================
-
-def upload_to_picrd(image_path):
-    with open(image_path, "rb") as image_file:
-        response = requests.post(
-            "https://picrd.com/api/upload",
-            files={
-                "file": (
-                    "mauksh_daily_horoscope.jpg",
-                    image_file,
-                    "image/jpeg",
-                )
-            },
-            data={"visibility": "unlisted"},
-            timeout=60,
-        )
-
-    response.raise_for_status()
-    result = response.json()
-
-    image_url = result.get("image_url")
-    delete_url = result.get("delete_url")
-
-    if not image_url or not delete_url:
-        raise RuntimeError(
-            "Image host did not return image_url and delete_url: "
-            + json.dumps(result)
-        )
-
-    # Verify the image is publicly reachable before using it.
-    check = requests.get(
-        image_url,
-        stream=True,
-        timeout=30,
-    )
-    check.raise_for_status()
-    check.close()
-
-    print("Poster uploaded to temporary image hosting.")
-    return image_url, delete_url
-
-
-# ==================================================
-# BUFFER GRAPHQL REQUEST HELPER
+# BUFFER GRAPHQL HELPER
 # ==================================================
 
 def buffer_graphql(query, variables=None):
     response = requests.post(
         "https://api.buffer.com",
         headers={
-            "Authorization": (
-                "Bearer " + os.environ["BUFFER_ACCESS_TOKEN"]
-            ),
+            "Authorization": "Bearer " + os.environ["BUFFER_ACCESS_TOKEN"],
             "Content-Type": "application/json",
         },
         json={
@@ -359,19 +288,117 @@ def buffer_graphql(query, variables=None):
 
     if result.get("errors"):
         raise RuntimeError(
-            "Buffer GraphQL error: "
-            + json.dumps(result["errors"])
+            "Buffer API error: " + json.dumps(result["errors"])
         )
 
     return result.get("data", {})
 
 
 # ==================================================
-# CREATE AN IMMEDIATE BUFFER POST
+# FIND THE ONLY INSTAGRAM CHANNEL AUTOMATICALLY
+# ==================================================
+
+def get_instagram_channel_id():
+    organizations_query = """
+    query GetOrganizations {
+      account {
+        organizations {
+          id
+          name
+        }
+      }
+    }
+    """
+
+    data = buffer_graphql(organizations_query)
+    organizations = data.get("account", {}).get("organizations", [])
+
+    instagram_channels = []
+
+    for organization in organizations:
+        organization_id = organization["id"]
+
+        channels_query = """
+        query GetChannels($organizationId: String!) {
+          channels(input: { organizationId: $organizationId }) {
+            id
+            name
+            service
+          }
+        }
+        """
+
+        channel_data = buffer_graphql(
+            channels_query,
+            {"organizationId": organization_id},
+        )
+
+        for channel in channel_data.get("channels", []):
+            service = str(channel.get("service", "")).lower()
+
+            if service == "instagram":
+                instagram_channels.append(channel)
+
+    if len(instagram_channels) != 1:
+        raise RuntimeError(
+            "Expected exactly one Instagram channel across your "
+            f"Buffer organizations; found {len(instagram_channels)}. "
+            "No post was created."
+        )
+
+    channel = instagram_channels[0]
+
+    print(
+        "Selected Instagram channel:",
+        channel.get("name", "Instagram"),
+    )
+
+    return channel["id"]
+
+
+# ==================================================
+# UPLOAD IMAGE TO PICRD
+# ==================================================
+
+def upload_to_picrd(image_path):
+    with open(image_path, "rb") as file:
+        response = requests.post(
+            "https://picrd.com/api/upload",
+            files={
+                "file": (
+                    "mauksh_daily_horoscope.jpg",
+                    file,
+                    "image/jpeg",
+                )
+            },
+            data={
+                "visibility": "unlisted",
+                "ttl_seconds": "86400",
+            },
+            timeout=60,
+        )
+
+    response.raise_for_status()
+    result = response.json()
+
+    image_url = result.get("image_url")
+    delete_url = result.get("delete_url")
+
+    if not image_url:
+        raise RuntimeError(
+            "Image host did not return image_url: " + json.dumps(result)
+        )
+
+    print("Image uploaded to temporary hosting.")
+    return image_url, delete_url
+
+
+# ==================================================
+# CREATE BUFFER POST
 # ==================================================
 
 def publish_to_buffer(image_url):
-    channel_id = os.environ["BUFFER_INSTAGRAM_CHANNEL_ID"]
+    channel_id = get_instagram_channel_id()
 
     caption = (
         f"Mauksh Daily Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
@@ -388,8 +415,7 @@ def publish_to_buffer(image_url):
             id
             text
             status
-            sentAt
-            shareMode
+            dueAt
           }
         }
         ... on MutationError {
@@ -424,28 +450,23 @@ def publish_to_buffer(image_url):
     result = data.get("createPost", {})
 
     if result.get("message"):
-        raise RuntimeError(
-            "Buffer rejected the post: " + str(result["message"])
-        )
+        raise RuntimeError("Buffer rejected post: " + result["message"])
 
     post = result.get("post")
+
     if not post or not post.get("id"):
         raise RuntimeError(
             "Buffer did not return a post ID: " + json.dumps(data)
         )
 
-    print(
-        "Buffer accepted post:",
-        post["id"],
-        "| initial status:",
-        post.get("status"),
-    )
+    print("Buffer accepted post ID:", post["id"])
+    print("Initial status:", post.get("status"))
 
     return post
 
 
 # ==================================================
-# WAIT FOR BUFFER TO CONFIRM PUBLICATION
+# WAIT FOR PUBLICATION CONFIRMATION
 # ==================================================
 
 def wait_until_published(post_id, timeout_seconds=900):
@@ -462,53 +483,44 @@ def wait_until_published(post_id, timeout_seconds=900):
     deadline = time.time() + timeout_seconds
 
     while time.time() < deadline:
-        data = buffer_graphql(
-            query,
-            {"id": post_id},
-        )
-
+        data = buffer_graphql(query, {"id": post_id})
         post = data.get("post")
 
-        if not post:
-            print("Could not read post status; will keep waiting.")
-        else:
+        if post:
             status = str(post.get("status", "")).lower()
-            print("Current Buffer post status:", status)
+            print("Buffer post status:", status)
 
             if status == "sent" or post.get("sentAt"):
-                print("Buffer confirms the post was published.")
                 return True
 
-            if status == "error":
-                print(
-                    "Buffer reports a publishing error. "
-                    "The hosted image will not be deleted."
-                )
+            if status in ("error", "failed"):
                 return False
 
         time.sleep(20)
 
-    print(
-        "Publication was not confirmed before timeout. "
-        "The hosted image will be retained."
-    )
     return False
 
 
 # ==================================================
-# DELETE TEMPORARY IMAGE AFTER CONFIRMED PUBLISHING
+# CLEANUP
 # ==================================================
 
-def delete_hosted_image(delete_url):
-    # Picrd documents this as a secret, single-use deletion URL.
-    # Never print or expose it in logs.
+def delete_temporary_image(delete_url):
+    if not delete_url:
+        print("No deletion URL returned; image host TTL will handle expiry.")
+        return
+
+    # Keep this URL private: it is a secret deletion link.
+    # Picrd may present a confirmation page instead of deleting directly.
+    # The host's documented TTL is the fallback if manual confirmation is needed.
     response = requests.get(
         delete_url,
         timeout=30,
+        allow_redirects=True,
     )
     response.raise_for_status()
 
-    print("Temporary hosted image deletion requested.")
+    print("Temporary image cleanup request completed.")
 
 
 # ==================================================
@@ -517,47 +529,40 @@ def delete_hosted_image(delete_url):
 
 def main():
     print(
-        "Starting Mauksh Daily Horoscope for "
-        + TODAY.strftime("%d %B %Y")
+        "Starting Mauksh Daily Horoscope:",
+        TODAY.strftime("%d %B %Y"),
     )
 
     horoscopes = generate_horoscopes()
     image_path = create_poster(horoscopes)
 
-    preview_only = (
-        os.getenv("PREVIEW_ONLY", "false").lower() == "true"
-    )
-
-    if preview_only:
-        print("PREVIEW_ONLY is enabled. No Instagram post will be created.")
+    if os.getenv("PREVIEW_ONLY", "false").lower() == "true":
+        print("Preview mode: no image upload or post created.")
         return
 
     image_url, delete_url = upload_to_picrd(image_path)
 
-    # If Buffer submission fails, retain the hosted image for debugging
-    # and to avoid losing a media URL while investigating the failure.
+    # Do not delete the public image unless publication is confirmed.
     post = publish_to_buffer(image_url)
-
     published = wait_until_published(post["id"])
 
     if published:
+        print("Buffer confirms publication.")
         try:
-            delete_hosted_image(delete_url)
+            delete_temporary_image(delete_url)
         except Exception as exc:
-            # Publishing has succeeded; deletion failure is non-fatal.
             print(
-                "Post published, but temporary image cleanup failed:",
+                "Image cleanup needs attention:",
                 type(exc).__name__,
             )
     else:
         print(
-            "Image was intentionally retained because publication "
-            "was not confirmed."
+            "Publication was not confirmed. "
+            "The image has been retained until its host TTL expires."
         )
 
-    print("Workflow finished.")
+    print("Mauksh horoscope workflow finished.")
 
 
 if __name__ == "__main__":
     main()
-
