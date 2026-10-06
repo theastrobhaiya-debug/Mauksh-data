@@ -113,7 +113,9 @@ AQUARIUS, PISCES.
 
     for i, item in enumerate(horoscopes):
         if str(item.get("sign", "")).upper() != SIGNS[i][0]:
-            raise ValueError(f"Incorrect zodiac sign at position {i + 1}.")
+            raise ValueError(
+                f"Incorrect zodiac sign at position {i + 1}."
+            )
 
         if not str(item.get("text", "")).strip():
             raise ValueError(f"Missing horoscope for {SIGNS[i][0]}.")
@@ -318,8 +320,9 @@ def get_instagram_channel_id():
     for organization in organizations:
         organization_id = organization["id"]
 
+        # FIX: Buffer expects OrganizationId!, not String!
         channels_query = """
-        query GetChannels($organizationId: String!) {
+        query GetChannels($organizationId: OrganizationId!) {
           channels(input: { organizationId: $organizationId }) {
             id
             name
@@ -507,12 +510,13 @@ def wait_until_published(post_id, timeout_seconds=900):
 
 def delete_temporary_image(delete_url):
     if not delete_url:
-        print("No deletion URL returned; image host TTL will handle expiry.")
+        print(
+            "No deletion URL returned; image host TTL may handle expiry."
+        )
         return
 
-    # Keep this URL private: it is a secret deletion link.
-    # Picrd may present a confirmation page instead of deleting directly.
-    # The host's documented TTL is the fallback if manual confirmation is needed.
+    # The host's deletion URL and HTTP method must be verified
+    # against its current documentation before relying on cleanup.
     response = requests.get(
         delete_url,
         timeout=30,
@@ -542,7 +546,6 @@ def main():
 
     image_url, delete_url = upload_to_picrd(image_path)
 
-    # Do not delete the public image unless publication is confirmed.
     post = publish_to_buffer(image_url)
     published = wait_until_published(post["id"])
 
