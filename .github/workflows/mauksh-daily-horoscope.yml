@@ -4,8 +4,8 @@ name: Mauksh Daily Horoscope
 on:
   workflow_dispatch:
 
-  schedule:
-    - cron: "45 2 * * *"
+  
+    
 
 permissions:
   contents: read
