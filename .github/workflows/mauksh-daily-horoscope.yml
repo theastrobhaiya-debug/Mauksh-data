@@ -24,10 +24,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r horoscope_instagram/requirements.txt
 
-      - name: Generate horoscope poster
+      - name: Generate and publish horoscope
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+          # Instagram Buffer account
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
+
+          # X Buffer account
           BUFFER_X_ACCESS_TOKEN: ${{ secrets.BUFFER_X_ACCESS_TOKEN }}
+
+          # Threads Buffer account
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+
           PREVIEW_ONLY: "false"
-        run: python horoscope_instagram/main.py
+
+        run: |
+          python horoscope_instagram/main.py
