@@ -1,10 +1,13 @@
-name: Mauksh LinkedIn Daily Career Horoscope
+name: Mauksh Daily Career Horoscope
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  linkedin-horoscope:
+  generate-and-post:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,17 +17,16 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install openai requests
 
-      - name: Generate and post LinkedIn horoscope
+      - name: Generate and publish career horoscope
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          MAUKSH_CAREER_BUFFER_TOKEN: ${{ secrets.MAUKSH_CAREER_BUFFER_TOKEN }}
         run: |
-          python scripts/linkedin_horoscope.py
+          python scripts/linkedin-horoscope.py
