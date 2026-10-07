@@ -395,7 +395,8 @@ variables = {
         "text": post_text,
         "channelId": channel_id,
         "schedulingType": "automatic",
-        "mode": "addToQueue"
+        "mode": "shareNow"
+    
     }
 }
 
