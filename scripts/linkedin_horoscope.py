@@ -13,6 +13,8 @@ MAUKSH_CAREER_BUFFER_TOKEN = os.environ["MAUKSH_CAREER_BUFFER_TOKEN"]
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+BUFFER_URL = "https://api.buffer.com"
+
 
 # ============================================================
 # DATE
@@ -140,7 +142,7 @@ Return ONLY the finished LinkedIn post.
 
 
 # ============================================================
-# OPENAI
+# GENERATE
 # ============================================================
 
 print("Generating Mauksh Daily Career Horoscope...")
@@ -162,14 +164,8 @@ print()
 
 
 # ============================================================
-# BUFFER
+# BUFFER HEADERS
 # ============================================================
-
-print("Publishing to Buffer...")
-
-
-buffer_url = "https://api.buffer.com"
-
 
 headers = {
     "Authorization": f"Bearer {MAUKSH_CAREER_BUFFER_TOKEN}",
@@ -178,16 +174,212 @@ headers = {
 
 
 # ============================================================
-# BUFFER GRAPHQL
+# STEP 1 — GET BUFFER ORGANIZATION
 # ============================================================
 
-mutation = """
-mutation CreatePost($input: CreatePostInput!) {
-    createPost(input: $input) {
-        ... on Post {
+print("Getting Buffer organization...")
+
+organization_query = """
+query GetOrganizations {
+    account {
+        organizations {
             id
-            text
-            status
+            name
+        }
+    }
+}
+"""
+
+organization_result = requests.post(
+    BUFFER_URL,
+    headers=headers,
+    json={
+        "query": organization_query
+    },
+    timeout=30
+)
+
+
+if organization_result.status_code != 200:
+
+    print()
+    print("==========================================")
+    print("BUFFER ORGANIZATION ERROR")
+    print("==========================================")
+    print("Status Code:", organization_result.status_code)
+    print("Response:", organization_result.text)
+    print("==========================================")
+
+    raise RuntimeError(
+        "Could not retrieve Buffer organization."
+    )
+
+
+organization_data = organization_result.json()
+
+
+if "errors" in organization_data:
+
+    print()
+    print("==========================================")
+    print("BUFFER ORGANIZATION GRAPHQL ERROR")
+    print("==========================================")
+    print(organization_data)
+    print("==========================================")
+
+    raise RuntimeError(
+        "Buffer organization lookup failed."
+    )
+
+
+organizations = (
+    organization_data
+    .get("data", {})
+    .get("account", {})
+    .get("organizations", [])
+)
+
+
+if not organizations:
+
+    raise RuntimeError(
+        "No Buffer organization found for this API token."
+    )
+
+
+# Use the first organization
+organization_id = organizations[0]["id"]
+
+print("Buffer Organization:")
+print(organizations[0].get("name"))
+print("Organization ID:", organization_id)
+
+
+# ============================================================
+# STEP 2 — GET CONNECTED CHANNELS
+# ============================================================
+
+print()
+print("Getting Buffer channels...")
+
+
+channels_query = f"""
+query GetChannels {{
+    channels(
+        input: {{
+            organizationId: "{organization_id}"
+        }}
+    ) {{
+        id
+        name
+        displayName
+        service
+    }}
+}}
+"""
+
+
+channels_result = requests.post(
+    BUFFER_URL,
+    headers=headers,
+    json={
+        "query": channels_query
+    },
+    timeout=30
+)
+
+
+if channels_result.status_code != 200:
+
+    print()
+    print("==========================================")
+    print("BUFFER CHANNEL ERROR")
+    print("==========================================")
+    print("Status Code:", channels_result.status_code)
+    print("Response:", channels_result.text)
+    print("==========================================")
+
+    raise RuntimeError(
+        "Could not retrieve Buffer channels."
+    )
+
+
+channels_data = channels_result.json()
+
+
+if "errors" in channels_data:
+
+    print()
+    print("==========================================")
+    print("BUFFER CHANNEL GRAPHQL ERROR")
+    print("==========================================")
+    print(channels_data)
+    print("==========================================")
+
+    raise RuntimeError(
+        "Buffer channel lookup failed."
+    )
+
+
+channels = (
+    channels_data
+    .get("data", {})
+    .get("channels", [])
+)
+
+
+if not channels:
+
+    raise RuntimeError(
+        "No Buffer channels found."
+    )
+
+
+# ============================================================
+# ONE CHANNEL
+# ============================================================
+
+if len(channels) > 1:
+
+    print()
+    print("WARNING:")
+    print(
+        f"Buffer returned {len(channels)} channels."
+    )
+    print("Using the first channel.")
+
+
+channel = channels[0]
+
+channel_id = channel["id"]
+
+print()
+print("Buffer Channel:")
+print("Name:", channel.get("name"))
+print("Display Name:", channel.get("displayName"))
+print("Service:", channel.get("service"))
+print("Channel ID:", channel_id)
+
+
+# ============================================================
+# STEP 3 — CREATE BUFFER POST
+# ============================================================
+
+print()
+print("Publishing to Buffer...")
+
+
+create_post_query = """
+mutation CreatePost($input: CreatePostInput!) {
+
+    createPost(input: $input) {
+
+        ... on PostActionSuccess {
+            post {
+                id
+                text
+                dueAt
+            }
         }
 
         ... on MutationError {
@@ -200,66 +392,60 @@ mutation CreatePost($input: CreatePostInput!) {
 
 variables = {
     "input": {
-        "text": post_text
+        "text": post_text,
+        "channelId": channel_id,
+        "schedulingType": "automatic",
+        "mode": "addToQueue"
     }
 }
 
 
-payload = {
-    "query": mutation,
-    "variables": variables
-}
-
-
-# ============================================================
-# SEND TO BUFFER
-# ============================================================
-
-result = requests.post(
-    buffer_url,
+create_post_result = requests.post(
+    BUFFER_URL,
     headers=headers,
-    json=payload,
+    json={
+        "query": create_post_query,
+        "variables": variables
+    },
     timeout=30
 )
 
 
 # ============================================================
-# ERROR HANDLING
+# HTTP ERROR
 # ============================================================
 
-if result.status_code != 200:
+if create_post_result.status_code != 200:
 
     print()
     print("==========================================")
-    print("BUFFER API ERROR")
+    print("BUFFER POST HTTP ERROR")
     print("==========================================")
-    print("Status Code:", result.status_code)
-    print("Response:", result.text)
+    print("Status Code:", create_post_result.status_code)
+    print("Response:", create_post_result.text)
     print("==========================================")
-    print()
 
     raise RuntimeError(
         f"Buffer posting failed with HTTP "
-        f"{result.status_code}"
+        f"{create_post_result.status_code}"
     )
 
 
-data = result.json()
+buffer_data = create_post_result.json()
 
 
 # ============================================================
 # GRAPHQL ERROR
 # ============================================================
 
-if "errors" in data:
+if "errors" in buffer_data:
 
     print()
     print("==========================================")
     print("BUFFER GRAPHQL ERROR")
     print("==========================================")
-    print(data)
+    print(buffer_data)
     print("==========================================")
-    print()
 
     raise RuntimeError(
         "Buffer posting failed."
@@ -267,28 +453,38 @@ if "errors" in data:
 
 
 # ============================================================
-# BUFFER RESPONSE
+# RESPONSE
 # ============================================================
 
-post = data.get("data", {}).get("createPost", {})
+create_post_data = (
+    buffer_data
+    .get("data", {})
+    .get("createPost")
+)
+
+
+if not create_post_data:
+
+    raise RuntimeError(
+        f"Unexpected Buffer response: {buffer_data}"
+    )
 
 
 # ============================================================
 # BUFFER MUTATION ERROR
 # ============================================================
 
-if post.get("message"):
+if "message" in create_post_data:
 
     print()
     print("==========================================")
-    print("BUFFER ERROR")
+    print("BUFFER POST ERROR")
     print("==========================================")
-    print(post["message"])
+    print(create_post_data["message"])
     print("==========================================")
-    print()
 
     raise RuntimeError(
-        post["message"]
+        create_post_data["message"]
     )
 
 
@@ -296,19 +492,26 @@ if post.get("message"):
 # SUCCESS
 # ============================================================
 
+post = create_post_data.get("post")
+
+
+if not post:
+
+    raise RuntimeError(
+        f"Buffer did not return a post: {buffer_data}"
+    )
+
+
 print()
 print("==========================================")
 print("SUCCESS")
 print("==========================================")
-print("Mauksh Daily Career Horoscope was sent")
-print("successfully to Buffer.")
+print("Mauksh Daily Career Horoscope was")
+print("successfully added to Buffer.")
 print()
 
-if post.get("id"):
-    print("Buffer Post ID:", post["id"])
-
-if post.get("status"):
-    print("Buffer Status:", post["status"])
+print("Buffer Post ID:", post.get("id"))
+print("Buffer Due At:", post.get("dueAt"))
 
 print()
 print("POST:")
