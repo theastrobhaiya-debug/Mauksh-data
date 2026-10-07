@@ -29,4 +29,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MAUKSH_CAREER_BUFFER_TOKEN: ${{ secrets.MAUKSH_CAREER_BUFFER_TOKEN }}
         run: |
-          python scripts/linkedin-horoscope.py
+          python scripts/linkedin_horoscope.py
