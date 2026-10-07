@@ -63,13 +63,9 @@ def get_font(size, bold=False):
 # ==================================================
 def generate_horoscopes():
     client = OpenAI(
-        api_key=os.environ[
-            "OPENAI_API_KEY"
-        ]
+        api_key=os.environ["OPENAI_API_KEY"]
     )
-    date_text = TODAY.strftime(
-        "%d %B %Y"
-    )
+    date_text = TODAY.strftime("%d %B %Y")
     sign_names = [
         sign
         for sign, _ in SIGNS
@@ -151,23 +147,15 @@ Include all 12 signs.
         []
     )
     if (
-        not isinstance(
-            horoscopes,
-            list
-        )
+        not isinstance(horoscopes, list)
         or len(horoscopes) != 12
     ):
         raise ValueError(
             "Expected exactly 12 horoscopes."
         )
-    for index, item in enumerate(
-        horoscopes
-    ):
+    for index, item in enumerate(horoscopes):
         expected_sign = SIGNS[index][0]
-        if not isinstance(
-            item,
-            dict
-        ):
+        if not isinstance(item, dict):
             raise ValueError(
                 "Invalid horoscope entry."
             )
@@ -190,9 +178,7 @@ Include all 12 signs.
                 ""
             )
         ).strip()
-        word_count = len(
-            text.split()
-        )
+        word_count = len(text.split())
         if not 18 <= word_count <= 24:
             raise ValueError(
                 f"{expected_sign} horoscope "
@@ -202,8 +188,8 @@ Include all 12 signs.
         item["sign"] = expected_sign
         item["text"] = text
     print(
-        f"Generated and validated 12 "
-        f"horoscopes for {date_text}."
+        f"Generated and validated 12 horoscopes "
+        f"for {date_text}."
     )
     return horoscopes
 # ==================================================
@@ -275,9 +261,7 @@ def create_poster(horoscopes):
     top = 270
     gap_y = 12
     card_h = 226
-    for index, item in enumerate(
-        horoscopes
-    ):
+    for index, item in enumerate(horoscopes):
         col = index % 3
         row = index // 3
         x = (
@@ -336,9 +320,7 @@ def create_poster(horoscopes):
             width=3,
         )
         lines = textwrap.wrap(
-            str(
-                item["text"]
-            ).strip(),
+            str(item["text"]).strip(),
             width=26,
             break_long_words=True,
         )
@@ -420,12 +402,13 @@ def buffer_graphql(
         {}
     )
 # ==================================================
-# FIND INSTAGRAM CHANNEL
+# FIND CHANNEL
 # ==================================================
-def get_instagram_channel_id():
-    access_token = os.environ[
-        "BUFFER_ACCESS_TOKEN"
-    ]
+def get_channel_id(
+    access_token,
+    service,
+    platform_name
+):
     organizations_query = """
     query GetOrganizations {
       account {
@@ -448,7 +431,7 @@ def get_instagram_channel_id():
             []
         )
     )
-    instagram_channels = []
+    matching_channels = []
     for organization in organizations:
         organization_id = (
             organization["id"]
@@ -480,41 +463,69 @@ def get_instagram_channel_id():
             "channels",
             []
         ):
-            if (
-                str(
-                    channel.get(
-                        "service",
-                        ""
-                    )
-                ).lower()
-                == "instagram"
-            ):
-                instagram_channels.append(
+            channel_service = str(
+                channel.get(
+                    "service",
+                    ""
+                )
+            ).lower()
+            if channel_service == service.lower():
+                matching_channels.append(
                     channel
                 )
-    if len(
-        instagram_channels
-    ) != 1:
+    if len(matching_channels) != 1:
         raise RuntimeError(
-            "Expected exactly one Instagram "
-            "channel across Buffer organizations; "
-            f"found {len(instagram_channels)}."
+            f"Expected exactly one "
+            f"{platform_name} channel; "
+            f"found {len(matching_channels)}. "
+            "No post was created."
         )
-    channel = instagram_channels[0]
+    channel = matching_channels[0]
     print(
-        "Selected Instagram channel:",
+        f"Selected {platform_name} channel:",
         channel.get(
             "name",
-            "Instagram"
+            platform_name
         )
     )
     return channel["id"]
 # ==================================================
+# INSTAGRAM CHANNEL
+# ==================================================
+def get_instagram_channel_id():
+    return get_channel_id(
+        os.environ[
+            "BUFFER_ACCESS_TOKEN"
+        ],
+        "instagram",
+        "Instagram"
+    )
+# ==================================================
+# X CHANNEL
+# ==================================================
+def get_x_channel_id():
+    return get_channel_id(
+        os.environ[
+            "BUFFER_X_ACCESS_TOKEN"
+        ],
+        "twitter",
+        "X"
+    )
+# ==================================================
+# THREADS CHANNEL
+# ==================================================
+def get_threads_channel_id():
+    return get_channel_id(
+        os.environ[
+            "BUFFER_API_KEY"
+        ],
+        "threads",
+        "Threads"
+    )
+# ==================================================
 # UPLOAD IMAGE TO PICRD
 # ==================================================
-def upload_to_picrd(
-    image_path
-):
+def upload_to_picrd(image_path):
     with open(
         image_path,
         "rb"
@@ -551,16 +562,13 @@ def upload_to_picrd(
             + json.dumps(result)
         )
     print(
-        "Image uploaded to "
-        "temporary hosting."
+        "Image uploaded to temporary hosting."
     )
     return image_url, delete_url
 # ==================================================
-# PUBLISH INSTAGRAM
+# INSTAGRAM POST
 # ==================================================
-def publish_to_instagram(
-    image_url
-):
+def publish_to_instagram(image_url):
     access_token = os.environ[
         "BUFFER_ACCESS_TOKEN"
     ]
@@ -636,16 +644,11 @@ def publish_to_instagram(
             "Buffer rejected Instagram post: "
             + result["message"]
         )
-    post = result.get(
-        "post"
-    )
-    if (
-        not post
-        or not post.get("id")
-    ):
+    post = result.get("post")
+    if not post or not post.get("id"):
         raise RuntimeError(
-            "Buffer did not return "
-            "Instagram post ID: "
+            "Buffer did not return Instagram "
+            "post ID: "
             + json.dumps(data)
         )
     print(
@@ -657,96 +660,6 @@ def publish_to_instagram(
         post.get("status")
     )
     return post
-# ==================================================
-# FIND X CHANNEL
-# ==================================================
-def get_x_channel_id():
-    access_token = os.environ[
-        "BUFFER_X_ACCESS_TOKEN"
-    ]
-    organizations_query = """
-    query GetOrganizations {
-      account {
-        organizations {
-          id
-          name
-        }
-      }
-    }
-    """
-    data = buffer_graphql(
-        access_token,
-        organizations_query
-    )
-    organizations = (
-        data
-        .get("account", {})
-        .get(
-            "organizations",
-            []
-        )
-    )
-    x_channels = []
-    for organization in organizations:
-        organization_id = (
-            organization["id"]
-        )
-        channels_query = """
-        query GetChannels(
-          $organizationId: OrganizationId!
-        ) {
-          channels(
-            input: {
-              organizationId: $organizationId
-            }
-          ) {
-            id
-            name
-            service
-          }
-        }
-        """
-        channel_data = buffer_graphql(
-            access_token,
-            channels_query,
-            {
-                "organizationId":
-                    organization_id
-            },
-        )
-        for channel in channel_data.get(
-            "channels",
-            []
-        ):
-            service = str(
-                channel.get(
-                    "service",
-                    ""
-                )
-            ).lower()
-            if service in (
-                "twitter",
-                "x"
-            ):
-                x_channels.append(
-                    channel
-                )
-    if len(x_channels) != 1:
-        raise RuntimeError(
-            "Expected exactly one X/Twitter "
-            "channel in the X Buffer account; "
-            f"found {len(x_channels)}. "
-            "No X post was created."
-        )
-    channel = x_channels[0]
-    print(
-        "Selected X channel:",
-        channel.get(
-            "name",
-            "X"
-        )
-    )
-    return channel["id"]
 # ==================================================
 # ZODIAC SYMBOLS
 # ==================================================
@@ -765,77 +678,86 @@ ZODIAC_SYMBOLS = {
     "PISCES": "♓",
 }
 # ==================================================
-# CREATE 12 X THREAD POSTS
+# CREATE THREAD ITEMS
 # ==================================================
-def create_x_thread(
-    horoscopes
+def create_thread_items(
+    horoscopes,
+    platform
 ):
     thread_posts = []
     # ------------------------------------------------
-    # ROOT POST
+    # ROOT / ARIES POST
     # ------------------------------------------------
-    root_text = (
+    first = horoscopes[0]
+    symbol = ZODIAC_SYMBOLS[
+        first["sign"]
+    ]
+    first_text = (
         f"Mauksh Daily Horoscope — "
         f"{TODAY.strftime('%d %B %Y')}\n\n"
-        "Read your sign below. "
-        "Take what feels useful."
+        f"{symbol} {first['sign'].title()}\n\n"
+        f"{first['text']}"
     )
-    if len(root_text) > 280:
-        raise ValueError(
-            "X root post exceeds 280 characters."
-        )
+    if platform == "x":
+        if len(first_text) > 280:
+            raise ValueError(
+                "Aries X post exceeds 280 characters."
+            )
     thread_posts.append(
         {
-            "text": root_text
+            "text": first_text
         }
     )
     # ------------------------------------------------
-    # 12 ZODIAC POSTS
+    # REMAINING 11 SIGNS
     # ------------------------------------------------
-    for item in horoscopes:
-        sign = item[
-            "sign"
+    for item in horoscopes[1:]:
+        sign = item["sign"]
+        symbol = ZODIAC_SYMBOLS[
+            sign
         ]
-        text = item[
-            "text"
-        ].strip()
-        symbol = ZODIAC_SYMBOLS.get(
-            sign,
-            ""
-        )
         post_text = (
             f"{symbol} {sign.title()}\n\n"
-            f"{text}"
+            f"{item['text']}"
         )
-        # X character safety check
-        if len(post_text) > 280:
-            raise ValueError(
-                f"{sign} X thread post is "
-                f"{len(post_text)} characters. "
-                "Maximum allowed is 280."
-            )
+        if platform == "x":
+            if len(post_text) > 280:
+                raise ValueError(
+                    f"{sign} X post is "
+                    f"{len(post_text)} characters. "
+                    "Maximum allowed is 280."
+                )
         thread_posts.append(
             {
                 "text": post_text
             }
         )
     # ------------------------------------------------
-    # FINAL POST
+    # PUT HASHTAGS ON PISCES
+    # SO WE STILL HAVE ONLY 12 POSTS
     # ------------------------------------------------
-    final_text = (
-        "Astrology is guidance, "
-        "not certainty.\n\n"
+    thread_posts[-1]["text"] += (
+        "\n\n"
+        "Take what feels useful. "
+        "Astrology is guidance, not certainty.\n\n"
         "#Mauksh #DailyHoroscope"
     )
-    if len(final_text) > 280:
-        raise ValueError(
-            "X final post exceeds 280 characters."
-        )
-    thread_posts.append(
-        {
-            "text": final_text
-        }
-    )
+    if platform == "x":
+        if len(
+            thread_posts[-1]["text"]
+        ) > 280:
+            # Keep X safely under 280
+            thread_posts[-1]["text"] = (
+                f"{ZODIAC_SYMBOLS['PISCES']} Pisces\n\n"
+                f"{horoscopes[-1]['text']}\n\n"
+                "#Mauksh #DailyHoroscope"
+            )
+            if len(
+                thread_posts[-1]["text"]
+            ) > 280:
+                raise ValueError(
+                    "Pisces X post exceeds 280 characters."
+                )
     return thread_posts
 # ==================================================
 # PUBLISH X THREAD
@@ -849,46 +771,21 @@ def publish_to_x(
     channel_id = (
         get_x_channel_id()
     )
-    thread_posts = (
-        create_x_thread(
-            horoscopes
-        )
+    thread_posts = create_thread_items(
+        horoscopes,
+        "x"
     )
     print(
-        "\n=============================="
-    )
-    print(
-        "X THREAD"
-    )
-    print(
-        "=============================="
+        "\n========== X THREAD ==========\n"
     )
     for index, item in enumerate(
         thread_posts
     ):
         print(
-            f"\n[{index + 1}/"
-            f"{len(thread_posts)}]"
+            f"X [{index + 1}/"
+            f"{len(thread_posts)}] "
+            f"{len(item['text'])} characters"
         )
-        print(
-            item["text"]
-        )
-        print(
-            f"Characters: "
-            f"{len(item['text'])}"
-        )
-    print(
-        "\n==============================\n"
-    )
-    # ------------------------------------------------
-    # IMPORTANT:
-    # Buffer requires:
-    #
-    # top-level text = first thread item
-    #
-    # metadata.twitter.thread =
-    # ALL thread items
-    # ------------------------------------------------
     mutation = """
     mutation CreateThread(
       $input: CreatePostInput!
@@ -910,7 +807,6 @@ def publish_to_x(
     """
     variables = {
         "input": {
-            # MUST MATCH FIRST THREAD ITEM
             "text":
                 thread_posts[0]["text"],
             "channelId":
@@ -941,24 +837,108 @@ def publish_to_x(
             "Buffer rejected X thread: "
             + result["message"]
         )
-    post = result.get(
-        "post"
-    )
-    if (
-        not post
-        or not post.get("id")
-    ):
+    post = result.get("post")
+    if not post or not post.get("id"):
         raise RuntimeError(
-            "Buffer did not return "
-            "X thread post ID: "
+            "Buffer did not return X thread ID: "
             + json.dumps(data)
         )
     print(
         "X Buffer thread ID:",
         post["id"]
     )
+    return post
+# ==================================================
+# PUBLISH THREADS THREAD
+# ==================================================
+def publish_to_threads(
+    horoscopes
+):
+    access_token = os.environ[
+        "BUFFER_API_KEY"
+    ]
+    channel_id = (
+        get_threads_channel_id()
+    )
+    thread_posts = create_thread_items(
+        horoscopes,
+        "threads"
+    )
     print(
-        "X initial status:",
+        "\n======= THREADS THREAD =======\n"
+    )
+    for index, item in enumerate(
+        thread_posts
+    ):
+        print(
+            f"Threads [{index + 1}/"
+            f"{len(thread_posts)}] "
+            f"{len(item['text'])} characters"
+        )
+    mutation = """
+    mutation CreateThreadsThread(
+      $input: CreatePostInput!
+    ) {
+      createPost(input: $input) {
+        ... on PostActionSuccess {
+          post {
+            id
+            text
+            status
+            dueAt
+          }
+        }
+        ... on MutationError {
+          message
+        }
+      }
+    }
+    """
+    variables = {
+        "input": {
+            "text":
+                thread_posts[0]["text"],
+            "channelId":
+                channel_id,
+            "schedulingType":
+                "automatic",
+            "mode":
+                "shareNow",
+            "metadata": {
+                "threads": {
+                    "thread":
+                        thread_posts
+                }
+            }
+        }
+    }
+    data = buffer_graphql(
+        access_token,
+        mutation,
+        variables
+    )
+    result = data.get(
+        "createPost",
+        {}
+    )
+    if result.get("message"):
+        raise RuntimeError(
+            "Buffer rejected Threads thread: "
+            + result["message"]
+        )
+    post = result.get("post")
+    if not post or not post.get("id"):
+        raise RuntimeError(
+            "Buffer did not return Threads "
+            "thread ID: "
+            + json.dumps(data)
+        )
+    print(
+        "Threads Buffer thread ID:",
+        post["id"]
+    )
+    print(
+        "Threads initial status:",
         post.get("status")
     )
     return post
@@ -984,16 +964,12 @@ def wait_until_published(
         time.time()
         + timeout_seconds
     )
-    while (
-        time.time()
-        < deadline
-    ):
+    while time.time() < deadline:
         data = buffer_graphql(
             access_token,
             query,
             {
-                "id":
-                    post_id
+                "id": post_id
             }
         )
         post = data.get(
@@ -1008,14 +984,11 @@ def wait_until_published(
             ).lower()
             print(
                 f"{platform_name} "
-                f"Buffer post status:",
-                status
+                f"status: {status}"
             )
             if (
                 status == "sent"
-                or post.get(
-                    "sentAt"
-                )
+                or post.get("sentAt")
             ):
                 return True
             if status in (
@@ -1044,8 +1017,7 @@ def delete_temporary_image(
     )
     response.raise_for_status()
     print(
-        "Temporary image cleanup "
-        "request completed."
+        "Temporary image cleanup completed."
     )
 # ==================================================
 # MAIN
@@ -1065,23 +1037,19 @@ def main():
     print(
         "=================================="
     )
-    # ------------------------------------------------
-    # 1. GENERATE HOROSCOPES ONCE
-    # ------------------------------------------------
-    horoscopes = (
-        generate_horoscopes()
+    # ==================================================
+    # GENERATE ONCE
+    # ==================================================
+    horoscopes = generate_horoscopes()
+    # ==================================================
+    # CREATE INSTAGRAM IMAGE
+    # ==================================================
+    image_path = create_poster(
+        horoscopes
     )
-    # ------------------------------------------------
-    # 2. CREATE INSTAGRAM POSTER
-    # ------------------------------------------------
-    image_path = (
-        create_poster(
-            horoscopes
-        )
-    )
-    # ------------------------------------------------
-    # 3. PREVIEW MODE
-    # ------------------------------------------------
+    # ==================================================
+    # PREVIEW
+    # ==================================================
     if (
         os.getenv(
             "PREVIEW_ONLY",
@@ -1093,13 +1061,13 @@ def main():
             "Preview mode enabled."
         )
         print(
-            "No Instagram or X "
+            "No Instagram, X or Threads "
             "posts will be created."
         )
         return
-    # ------------------------------------------------
-    # 4. INSTAGRAM
-    # ------------------------------------------------
+    # ==================================================
+    # INSTAGRAM
+    # ==================================================
     print(
         "\n========== INSTAGRAM ==========\n"
     )
@@ -1108,59 +1076,94 @@ def main():
             image_path
         )
     )
-    instagram_post = (
-        publish_to_instagram(
-            image_url
+    try:
+        instagram_post = (
+            publish_to_instagram(
+                image_url
+            )
         )
-    )
-    instagram_published = (
-        wait_until_published(
-            instagram_post["id"],
-            os.environ[
-                "BUFFER_ACCESS_TOKEN"
-            ],
-            "Instagram"
+        instagram_published = (
+            wait_until_published(
+                instagram_post["id"],
+                os.environ[
+                    "BUFFER_ACCESS_TOKEN"
+                ],
+                "Instagram"
+            )
         )
-    )
-    if instagram_published:
+        if instagram_published:
+            print(
+                "Instagram publication confirmed."
+            )
+    except Exception as exc:
         print(
-            "Instagram publication confirmed."
+            "Instagram failed:",
+            type(exc).__name__,
+            str(exc)
         )
-    else:
-        print(
-            "Instagram publication was "
-            "not confirmed."
-        )
-    # ------------------------------------------------
-    # 5. X THREAD
-    # ------------------------------------------------
+    # ==================================================
+    # X
+    # ==================================================
     print(
         "\n============== X ==============\n"
     )
-    x_post = publish_to_x(
-        horoscopes
-    )
-    x_published = (
-        wait_until_published(
-            x_post["id"],
-            os.environ[
-                "BUFFER_X_ACCESS_TOKEN"
-            ],
-            "X"
+    try:
+        x_post = publish_to_x(
+            horoscopes
         )
-    )
-    if x_published:
+        x_published = (
+            wait_until_published(
+                x_post["id"],
+                os.environ[
+                    "BUFFER_X_ACCESS_TOKEN"
+                ],
+                "X"
+            )
+        )
+        if x_published:
+            print(
+                "X thread publication confirmed."
+            )
+    except Exception as exc:
         print(
-            "X thread publication confirmed."
+            "X failed:",
+            type(exc).__name__,
+            str(exc)
         )
-    else:
+    # ==================================================
+    # THREADS
+    # ==================================================
+    print(
+        "\n========== THREADS ============\n"
+    )
+    try:
+        threads_post = (
+            publish_to_threads(
+                horoscopes
+            )
+        )
+        threads_published = (
+            wait_until_published(
+                threads_post["id"],
+                os.environ[
+                    "BUFFER_API_KEY"
+                ],
+                "Threads"
+            )
+        )
+        if threads_published:
+            print(
+                "Threads publication confirmed."
+            )
+    except Exception as exc:
         print(
-            "X thread publication was "
-            "not confirmed."
+            "Threads failed:",
+            type(exc).__name__,
+            str(exc)
         )
-    # ------------------------------------------------
-    # 6. CLEANUP INSTAGRAM IMAGE
-    # ------------------------------------------------
+    # ==================================================
+    # CLEANUP
+    # ==================================================
     try:
         delete_temporary_image(
             delete_url
@@ -1170,9 +1173,9 @@ def main():
             "Image cleanup needs attention:",
             type(exc).__name__
         )
-    # ------------------------------------------------
+    # ==================================================
     # FINISHED
-    # ------------------------------------------------
+    # ==================================================
     print(
         "\n=================================="
     )
@@ -1183,7 +1186,10 @@ def main():
         "Instagram: 1 post"
     )
     print(
-        "X: 1 thread"
+        "X: 12-post thread"
+    )
+    print(
+        "Threads: 12-post thread"
     )
     print(
         "=================================="
