@@ -3,12 +3,6 @@ name: Mauksh Daily Horoscope
 
 on:
   workflow_dispatch:
-    inputs:
-      preview_only:
-        description: "Test without publishing to Instagram"
-        required: true
-        type: boolean
-        default: true
 
   schedule:
     - cron: "45 2 * * *"
@@ -38,5 +32,5 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
-          PREVIEW_ONLY: ${{ inputs.preview_only || 'false' }}
+          PREVIEW_ONLY: "false"
         run: python horoscope_instagram/main.py
