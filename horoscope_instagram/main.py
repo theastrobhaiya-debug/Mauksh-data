@@ -65,34 +65,75 @@ def get_font(size, bold=False):
 
 
 # ==================================================
-# OPENAI: GENERATE 12 HOROSCOPES
+# OPENAI: GENERATE 12 ORIGINAL VEDIC HOROSCOPES
 # ==================================================
 
 def generate_horoscopes():
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
+    date_text = TODAY.strftime("%d %B %Y")
+    sign_names = [sign for sign, _ in SIGNS]
+
     prompt = f"""
-Write daily horoscopes in English for
-{TODAY.strftime('%d %B %Y')}.
+You are an experienced Vedic astrology writer creating daily
+horoscopes for the Mauksh brand.
 
-Brand: Mauksh.
-Tone: practical, warm, grounded, encouraging.
-Write 18-24 words for each zodiac sign.
-Give each sign distinct daily guidance.
-Avoid fear, guaranteed outcomes, and invented planetary transits.
-No Hindi, Hinglish, emojis, hashtags, or markdown.
+DATE: {date_text}
+ASTROLOGY SYSTEM: Vedic astrology using the sidereal zodiac.
 
-Return only valid JSON in this format:
+TASK:
+Generate one daily horoscope for each of the 12 zodiac signs,
+interpreting relevant Vedic planetary transit themes for this date.
+
+VEDIC TRANSIT GUIDELINES:
+1. Use Vedic astrological principles to interpret relevant planetary
+   transits and their possible themes for each zodiac sign.
+2. Consider the Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn,
+   Rahu and Ketu where relevant.
+3. Do not invent planetary positions, sign changes, conjunctions,
+   aspects, nakshatras or transit events.
+4. Do not claim to have verified live transits or calculated an
+   accurate chart if that information is unavailable.
+5. If exact transit information is unavailable, do not pretend
+   that specific planetary positions have been verified.
+6. Present astrology as interpretive guidance, not guaranteed fact.
+
+STRICT NON-REPETITION CHECK:
+Before returning your final answer, review all 12 horoscopes together.
+- Do not copy or paraphrase one sign's prediction for another.
+- Give every sign a distinct central theme and practical advice.
+- Avoid repeated openings, sentence structures, metaphors and phrases.
+- Do not merely replace a few words to disguise repetition.
+- Avoid generic recycled horoscope clichés.
+- If two predictions feel similar, rewrite them before responding.
+- Check the complete set for originality before returning the JSON.
+
+IMPORTANT:
+This originality check applies to the 12 predictions in this request.
+No previous day's predictions have been supplied, so do not claim to
+have compared these horoscopes with yesterday's content.
+
+STYLE:
+- English only.
+- Each horoscope must contain 18–24 words.
+- Warm, practical, grounded, encouraging and thoughtful.
+- Focus on everyday guidance about work, money, relationships,
+  communication, decisions or personal growth.
+- Do not mention planet names in the published horoscope text.
+- Avoid fear, alarming predictions and guaranteed outcomes.
+- No Hindi, Hinglish, emojis, hashtags or Markdown in the text.
+
+Return exactly 12 entries in this order:
+{json.dumps(sign_names)}
+
+Return ONLY valid JSON in this structure:
 {{
   "horoscopes": [
-    {{"sign": "ARIES", "text": "Daily guidance"}}
+    {{"sign": "ARIES", "text": "Daily guidance."}},
+    {{"sign": "TAURUS", "text": "Daily guidance."}}
   ]
 }}
-
-Return exactly these signs in this order:
-ARIES, TAURUS, GEMINI, CANCER, LEO, VIRGO,
-LIBRA, SCORPIO, SAGITTARIUS, CAPRICORN,
-AQUARIUS, PISCES.
+Include all 12 signs, not just the two examples.
 """
 
     response = client.responses.create(
@@ -108,19 +149,33 @@ AQUARIUS, PISCES.
     data = json.loads(raw)
     horoscopes = data.get("horoscopes", [])
 
-    if len(horoscopes) != 12:
+    if not isinstance(horoscopes, list) or len(horoscopes) != 12:
         raise ValueError("Expected exactly 12 horoscopes.")
 
-    for i, item in enumerate(horoscopes):
-        if str(item.get("sign", "")).upper() != SIGNS[i][0]:
+    for index, item in enumerate(horoscopes):
+        expected_sign = SIGNS[index][0]
+
+        if not isinstance(item, dict):
+            raise ValueError("Invalid horoscope entry.")
+
+        if str(item.get("sign", "")).upper() != expected_sign:
             raise ValueError(
-                f"Incorrect zodiac sign at position {i + 1}."
+                f"Expected {expected_sign} at position {index + 1}."
             )
 
-        if not str(item.get("text", "")).strip():
-            raise ValueError(f"Missing horoscope for {SIGNS[i][0]}.")
+        text = str(item.get("text", "")).strip()
+        word_count = len(text.split())
 
-    print("All 12 horoscopes generated.")
+        if not 18 <= word_count <= 24:
+            raise ValueError(
+                f"{expected_sign} horoscope has {word_count} words; "
+                "expected 18–24."
+            )
+
+        item["sign"] = expected_sign
+        item["text"] = text
+
+    print(f"Generated and validated 12 horoscopes for {date_text}.")
     return horoscopes
 
 
@@ -263,7 +318,7 @@ def create_poster(horoscopes):
     )
 
     image.save(OUTPUT_PATH, "JPEG", quality=94, optimize=True)
-    print("Poster created.")
+    print("Poster created:", OUTPUT_PATH)
     return OUTPUT_PATH
 
 
@@ -320,7 +375,6 @@ def get_instagram_channel_id():
     for organization in organizations:
         organization_id = organization["id"]
 
-        # FIX: Buffer expects OrganizationId!, not String!
         channels_query = """
         query GetChannels($organizationId: OrganizationId!) {
           channels(input: { organizationId: $organizationId }) {
@@ -337,24 +391,18 @@ def get_instagram_channel_id():
         )
 
         for channel in channel_data.get("channels", []):
-            service = str(channel.get("service", "")).lower()
-
-            if service == "instagram":
+            if str(channel.get("service", "")).lower() == "instagram":
                 instagram_channels.append(channel)
 
     if len(instagram_channels) != 1:
         raise RuntimeError(
-            "Expected exactly one Instagram channel across your "
-            f"Buffer organizations; found {len(instagram_channels)}. "
+            "Expected exactly one Instagram channel across Buffer "
+            f"organizations; found {len(instagram_channels)}. "
             "No post was created."
         )
 
     channel = instagram_channels[0]
-
-    print(
-        "Selected Instagram channel:",
-        channel.get("name", "Instagram"),
-    )
+    print("Selected Instagram channel:", channel.get("name", "Instagram"))
 
     return channel["id"]
 
@@ -441,12 +489,12 @@ def publish_to_buffer(image_url):
                     }
                 }
             ],
-         "metadata": {
-    "instagram": {
-        "type": "post",
-        "shouldShareToFeed": True
-    }
-},
+            "metadata": {
+                "instagram": {
+                    "type": "post",
+                    "shouldShareToFeed": True,
+                }
+            },
         }
     }
 
@@ -506,25 +554,22 @@ def wait_until_published(post_id, timeout_seconds=900):
 
 
 # ==================================================
-# CLEANUP
+# CLEANUP TEMPORARY IMAGE
 # ==================================================
 
 def delete_temporary_image(delete_url):
     if not delete_url:
-        print(
-            "No deletion URL returned; image host TTL may handle expiry."
-        )
+        print("No deletion URL returned; relying on host expiry.")
         return
 
-    # The host's deletion URL and HTTP method must be verified
-    # against its current documentation before relying on cleanup.
+    # Confirm the hosting provider's current deletion method before
+    # relying on this cleanup request.
     response = requests.get(
         delete_url,
         timeout=30,
         allow_redirects=True,
     )
     response.raise_for_status()
-
     print("Temporary image cleanup request completed.")
 
 
@@ -555,14 +600,11 @@ def main():
         try:
             delete_temporary_image(delete_url)
         except Exception as exc:
-            print(
-                "Image cleanup needs attention:",
-                type(exc).__name__,
-            )
+            print("Image cleanup needs attention:", type(exc).__name__)
     else:
         print(
-            "Publication was not confirmed. "
-            "The image has been retained until its host TTL expires."
+            "Publication not confirmed. The image host TTL will "
+            "eventually expire the temporary image if supported."
         )
 
     print("Mauksh horoscope workflow finished.")
@@ -570,3 +612,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
