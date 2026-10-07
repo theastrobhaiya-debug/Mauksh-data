@@ -5,12 +5,11 @@ from openai import OpenAI
 
 
 # ============================================================
-# MAUKSH DAILY CAREER HOROSCOPE — LINKEDIN
+# MAUKSH DAILY CAREER HOROSCOPE — BUFFER
 # ============================================================
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-LINKEDIN_ACCESS_TOKEN = os.environ["LINKEDIN_ACCESS_TOKEN"]
-LINKEDIN_ORGANIZATION_ID = os.environ["LINKEDIN_ORGANIZATION_ID"]
+MAUKSH_CAREER_BUFFER_TOKEN = os.environ["MAUKSH_CAREER_BUFFER_TOKEN"]
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -140,6 +139,10 @@ Return ONLY the finished LinkedIn post.
 """
 
 
+# ============================================================
+# OPENAI
+# ============================================================
+
 print("Generating Mauksh Daily Career Horoscope...")
 
 response = client.responses.create(
@@ -159,50 +162,61 @@ print()
 
 
 # ============================================================
-# LINKEDIN ORGANIZATION
+# BUFFER
 # ============================================================
 
-organization_urn = (
-    f"urn:li:organization:{LINKEDIN_ORGANIZATION_ID}"
-)
-
-print("LinkedIn Organization:")
-print(organization_urn)
+print("Publishing to Buffer...")
 
 
-# ============================================================
-# LINKEDIN POSTS API
-# ============================================================
+buffer_url = "https://api.buffer.com"
 
-url = "https://api.linkedin.com/rest/posts"
 
 headers = {
-    "Authorization": f"Bearer {LINKEDIN_ACCESS_TOKEN}",
-    "X-Restli-Protocol-Version": "2.0.0",
-    "Linkedin-Version": "202608",
+    "Authorization": f"Bearer {MAUKSH_CAREER_BUFFER_TOKEN}",
     "Content-Type": "application/json"
 }
 
 
-payload = {
-    "author": organization_urn,
-    "commentary": post_text,
-    "visibility": "PUBLIC",
-    "distribution": {
-        "feedDistribution": "MAIN_FEED",
-        "targetEntities": [],
-        "thirdPartyDistributionChannels": []
-    },
-    "lifecycleState": "PUBLISHED",
-    "isReshareDisabledByAuthor": False
+# ============================================================
+# BUFFER GRAPHQL
+# ============================================================
+
+mutation = """
+mutation CreatePost($input: CreatePostInput!) {
+    createPost(input: $input) {
+        ... on Post {
+            id
+            text
+            status
+        }
+
+        ... on MutationError {
+            message
+        }
+    }
+}
+"""
+
+
+variables = {
+    "input": {
+        "text": post_text
+    }
 }
 
 
-print("Publishing to Mauksh LinkedIn Page...")
+payload = {
+    "query": mutation,
+    "variables": variables
+}
 
+
+# ============================================================
+# SEND TO BUFFER
+# ============================================================
 
 result = requests.post(
-    url,
+    buffer_url,
     headers=headers,
     json=payload,
     timeout=30
@@ -213,19 +227,68 @@ result = requests.post(
 # ERROR HANDLING
 # ============================================================
 
-if result.status_code not in (200, 201):
+if result.status_code != 200:
 
     print()
     print("==========================================")
-    print("LINKEDIN API ERROR")
+    print("BUFFER API ERROR")
     print("==========================================")
     print("Status Code:", result.status_code)
     print("Response:", result.text)
+    print("==========================================")
     print()
 
     raise RuntimeError(
-        f"LinkedIn posting failed with HTTP "
+        f"Buffer posting failed with HTTP "
         f"{result.status_code}"
+    )
+
+
+data = result.json()
+
+
+# ============================================================
+# GRAPHQL ERROR
+# ============================================================
+
+if "errors" in data:
+
+    print()
+    print("==========================================")
+    print("BUFFER GRAPHQL ERROR")
+    print("==========================================")
+    print(data)
+    print("==========================================")
+    print()
+
+    raise RuntimeError(
+        "Buffer posting failed."
+    )
+
+
+# ============================================================
+# BUFFER RESPONSE
+# ============================================================
+
+post = data.get("data", {}).get("createPost", {})
+
+
+# ============================================================
+# BUFFER MUTATION ERROR
+# ============================================================
+
+if post.get("message"):
+
+    print()
+    print("==========================================")
+    print("BUFFER ERROR")
+    print("==========================================")
+    print(post["message"])
+    print("==========================================")
+    print()
+
+    raise RuntimeError(
+        post["message"]
     )
 
 
@@ -237,14 +300,18 @@ print()
 print("==========================================")
 print("SUCCESS")
 print("==========================================")
-print("Mauksh Daily Career Horoscope was posted")
-print("successfully to LinkedIn.")
+print("Mauksh Daily Career Horoscope was sent")
+print("successfully to Buffer.")
 print()
 
-post_id = result.headers.get("x-restli-id")
+if post.get("id"):
+    print("Buffer Post ID:", post["id"])
 
-if post_id:
-    print("LinkedIn Post ID:", post_id)
+if post.get("status"):
+    print("Buffer Status:", post["status"])
 
 print()
+print("POST:")
+print("------------------------------------------")
 print(post_text)
+print("------------------------------------------")
