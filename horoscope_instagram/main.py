@@ -38,7 +38,11 @@ SIGNS = [
 def get_font(size, bold=False):
     candidates = [
         "/usr/share/fonts/truetype/dejavu/"
-        + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
+        + (
+            "DejaVuSans-Bold.ttf"
+            if bold
+            else "DejaVuSans.ttf"
+        ),
         "/usr/share/fonts/truetype/liberation2/"
         + (
             "LiberationSans-Bold.ttf"
@@ -48,17 +52,28 @@ def get_font(size, bold=False):
     ]
     for path in candidates:
         if os.path.exists(path):
-            return ImageFont.truetype(path, size)
+            return ImageFont.truetype(
+                path,
+                size
+            )
     return ImageFont.load_default()
 # ==================================================
-# OPENAI — GENERATE 12 HOROSCOPES
+# OPENAI
+# GENERATE 12 ORIGINAL VEDIC HOROSCOPES
 # ==================================================
 def generate_horoscopes():
     client = OpenAI(
-        api_key=os.environ["OPENAI_API_KEY"]
+        api_key=os.environ[
+            "OPENAI_API_KEY"
+        ]
     )
-    date_text = TODAY.strftime("%d %B %Y")
-    sign_names = [sign for sign, _ in SIGNS]
+    date_text = TODAY.strftime(
+        "%d %B %Y"
+    )
+    sign_names = [
+        sign
+        for sign, _ in SIGNS
+    ]
     prompt = f"""
 You are an experienced Vedic astrology writer creating daily
 horoscopes for the Mauksh brand.
@@ -71,7 +86,7 @@ interpreting relevant Vedic planetary transit themes for this date.
 VEDIC TRANSIT GUIDELINES:
 1. Use Vedic astrological principles to interpret relevant
    planetary transit themes for each zodiac sign.
-2. Consider Sun, Moon, Mars, Mercury, Jupiter, Venus,
+2. Consider the Sun, Moon, Mars, Mercury, Jupiter, Venus,
    Saturn, Rahu and Ketu where relevant.
 3. Do not invent planetary positions, sign changes,
    conjunctions, aspects, nakshatras or transit events.
@@ -103,7 +118,7 @@ STYLE:
 - No Hinglish.
 - No emojis.
 - No hashtags.
-- No Markdown inside the horoscope text.
+- No Markdown inside horoscope text.
 Return exactly 12 entries in this order:
 {json.dumps(sign_names)}
 Return ONLY valid JSON:
@@ -116,43 +131,79 @@ Return ONLY valid JSON:
 Include all 12 signs.
 """
     response = client.responses.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
+        model=os.getenv(
+            "OPENAI_MODEL",
+            "gpt-5-mini"
+        ),
         input=prompt,
     )
     raw = response.output_text.strip()
     if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1].rsplit(
-            "```", 1
-        )[0].strip()
+        raw = (
+            raw
+            .split("\n", 1)[1]
+            .rsplit("```", 1)[0]
+            .strip()
+        )
     data = json.loads(raw)
-    horoscopes = data.get("horoscopes", [])
-    if not isinstance(horoscopes, list) or len(horoscopes) != 12:
+    horoscopes = data.get(
+        "horoscopes",
+        []
+    )
+    if (
+        not isinstance(
+            horoscopes,
+            list
+        )
+        or len(horoscopes) != 12
+    ):
         raise ValueError(
             "Expected exactly 12 horoscopes."
         )
-    for index, item in enumerate(horoscopes):
+    for index, item in enumerate(
+        horoscopes
+    ):
         expected_sign = SIGNS[index][0]
-        if not isinstance(item, dict):
+        if not isinstance(
+            item,
+            dict
+        ):
             raise ValueError(
                 "Invalid horoscope entry."
             )
-        if str(item.get("sign", "")).upper() != expected_sign:
+        if (
+            str(
+                item.get(
+                    "sign",
+                    ""
+                )
+            ).upper()
+            != expected_sign
+        ):
             raise ValueError(
                 f"Expected {expected_sign} "
                 f"at position {index + 1}."
             )
-        text = str(item.get("text", "")).strip()
-        word_count = len(text.split())
+        text = str(
+            item.get(
+                "text",
+                ""
+            )
+        ).strip()
+        word_count = len(
+            text.split()
+        )
         if not 18 <= word_count <= 24:
             raise ValueError(
-                f"{expected_sign} horoscope has "
-                f"{word_count} words; expected 18–24."
+                f"{expected_sign} horoscope "
+                f"has {word_count} words; "
+                "expected 18–24."
             )
         item["sign"] = expected_sign
         item["text"] = text
     print(
-        f"Generated and validated 12 horoscopes "
-        f"for {date_text}."
+        f"Generated and validated 12 "
+        f"horoscopes for {date_text}."
     )
     return horoscopes
 # ==================================================
@@ -224,16 +275,22 @@ def create_poster(horoscopes):
     top = 270
     gap_y = 12
     card_h = 226
-    for index, item in enumerate(horoscopes):
+    for index, item in enumerate(
+        horoscopes
+    ):
         col = index % 3
         row = index // 3
         x = (
             margin_x
-            + col * (card_w + gap_x)
+            + col * (
+                card_w + gap_x
+            )
         )
         y = (
             top
-            + row * (card_h + gap_y)
+            + row * (
+                card_h + gap_y
+            )
         )
         draw.rounded_rectangle(
             (
@@ -279,7 +336,9 @@ def create_poster(horoscopes):
             width=3,
         )
         lines = textwrap.wrap(
-            str(item["text"]).strip(),
+            str(
+                item["text"]
+            ).strip(),
             width=26,
             break_long_words=True,
         )
@@ -326,10 +385,6 @@ def create_poster(horoscopes):
     return OUTPUT_PATH
 # ==================================================
 # BUFFER GRAPHQL HELPER
-#
-# TOKEN IS PASSED EXPLICITLY
-# SO INSTAGRAM AND X CAN USE
-# DIFFERENT BUFFER ACCOUNTS.
 # ==================================================
 def buffer_graphql(
     access_token,
@@ -346,7 +401,8 @@ def buffer_graphql(
         },
         json={
             "query": query,
-            "variables": variables or {},
+            "variables":
+                variables or {},
         },
         timeout=60,
     )
@@ -355,12 +411,16 @@ def buffer_graphql(
     if result.get("errors"):
         raise RuntimeError(
             "Buffer API error: "
-            + json.dumps(result["errors"])
+            + json.dumps(
+                result["errors"]
+            )
         )
-    return result.get("data", {})
+    return result.get(
+        "data",
+        {}
+    )
 # ==================================================
 # FIND INSTAGRAM CHANNEL
-# USING INSTAGRAM BUFFER ACCOUNT
 # ==================================================
 def get_instagram_channel_id():
     access_token = os.environ[
@@ -383,11 +443,16 @@ def get_instagram_channel_id():
     organizations = (
         data
         .get("account", {})
-        .get("organizations", [])
+        .get(
+            "organizations",
+            []
+        )
     )
     instagram_channels = []
     for organization in organizations:
-        organization_id = organization["id"]
+        organization_id = (
+            organization["id"]
+        )
         channels_query = """
         query GetChannels(
           $organizationId: OrganizationId!
@@ -416,14 +481,20 @@ def get_instagram_channel_id():
             []
         ):
             if (
-                str(channel.get("service", ""))
-                .lower()
+                str(
+                    channel.get(
+                        "service",
+                        ""
+                    )
+                ).lower()
                 == "instagram"
             ):
                 instagram_channels.append(
                     channel
                 )
-    if len(instagram_channels) != 1:
+    if len(
+        instagram_channels
+    ) != 1:
         raise RuntimeError(
             "Expected exactly one Instagram "
             "channel across Buffer organizations; "
@@ -441,8 +512,13 @@ def get_instagram_channel_id():
 # ==================================================
 # UPLOAD IMAGE TO PICRD
 # ==================================================
-def upload_to_picrd(image_path):
-    with open(image_path, "rb") as file:
+def upload_to_picrd(
+    image_path
+):
+    with open(
+        image_path,
+        "rb"
+    ) as file:
         response = requests.post(
             "https://picrd.com/api/upload",
             files={
@@ -453,8 +529,10 @@ def upload_to_picrd(image_path):
                 )
             },
             data={
-                "visibility": "unlisted",
-                "ttl_seconds": "86400",
+                "visibility":
+                    "unlisted",
+                "ttl_seconds":
+                    "86400",
             },
             timeout=60,
         )
@@ -473,14 +551,16 @@ def upload_to_picrd(image_path):
             + json.dumps(result)
         )
     print(
-        "Image uploaded to temporary hosting."
+        "Image uploaded to "
+        "temporary hosting."
     )
     return image_url, delete_url
 # ==================================================
-# PUBLISH INSTAGRAM POST
-# EXISTING FLOW
+# PUBLISH INSTAGRAM
 # ==================================================
-def publish_to_instagram(image_url):
+def publish_to_instagram(
+    image_url
+):
     access_token = os.environ[
         "BUFFER_ACCESS_TOKEN"
     ]
@@ -516,7 +596,8 @@ def publish_to_instagram(image_url):
     """
     variables = {
         "input": {
-            "text": caption,
+            "text":
+                caption,
             "channelId":
                 channel_id,
             "schedulingType":
@@ -555,11 +636,16 @@ def publish_to_instagram(image_url):
             "Buffer rejected Instagram post: "
             + result["message"]
         )
-    post = result.get("post")
-    if not post or not post.get("id"):
+    post = result.get(
+        "post"
+    )
+    if (
+        not post
+        or not post.get("id")
+    ):
         raise RuntimeError(
-            "Buffer did not return an Instagram "
-            "post ID: "
+            "Buffer did not return "
+            "Instagram post ID: "
             + json.dumps(data)
         )
     print(
@@ -573,9 +659,6 @@ def publish_to_instagram(image_url):
     return post
 # ==================================================
 # FIND X CHANNEL
-#
-# USES DIFFERENT BUFFER ACCOUNT
-# BUFFER_X_ACCESS_TOKEN
 # ==================================================
 def get_x_channel_id():
     access_token = os.environ[
@@ -598,11 +681,16 @@ def get_x_channel_id():
     organizations = (
         data
         .get("account", {})
-        .get("organizations", [])
+        .get(
+            "organizations",
+            []
+        )
     )
     x_channels = []
     for organization in organizations:
-        organization_id = organization["id"]
+        organization_id = (
+            organization["id"]
+        )
         channels_query = """
         query GetChannels(
           $organizationId: OrganizationId!
@@ -636,8 +724,6 @@ def get_x_channel_id():
                     ""
                 )
             ).lower()
-            # Buffer may expose X as "twitter"
-            # or "x" depending on the API/account.
             if service in (
                 "twitter",
                 "x"
@@ -662,48 +748,149 @@ def get_x_channel_id():
     )
     return channel["id"]
 # ==================================================
-# CREATE TEXT-ONLY X POST
+# ZODIAC SYMBOLS
 # ==================================================
-def create_x_text(horoscopes):
-    lines = []
-    lines.append(
+ZODIAC_SYMBOLS = {
+    "ARIES": "♈",
+    "TAURUS": "♉",
+    "GEMINI": "♊",
+    "CANCER": "♋",
+    "LEO": "♌",
+    "VIRGO": "♍",
+    "LIBRA": "♎",
+    "SCORPIO": "♏",
+    "SAGITTARIUS": "♐",
+    "CAPRICORN": "♑",
+    "AQUARIUS": "♒",
+    "PISCES": "♓",
+}
+# ==================================================
+# CREATE 12 X THREAD POSTS
+# ==================================================
+def create_x_thread(
+    horoscopes
+):
+    thread_posts = []
+    # ------------------------------------------------
+    # ROOT POST
+    # ------------------------------------------------
+    root_text = (
         f"Mauksh Daily Horoscope — "
-        f"{TODAY.strftime('%d %B %Y')}"
+        f"{TODAY.strftime('%d %B %Y')}\n\n"
+        "Read your sign below. "
+        "Take what feels useful."
     )
-    lines.append("")
-    for item in horoscopes:
-        sign = item["sign"].title()
-        text = item["text"].strip()
-        lines.append(
-            f"{sign}: {text}"
+    if len(root_text) > 280:
+        raise ValueError(
+            "X root post exceeds 280 characters."
         )
-        lines.append("")
-    lines.append(
-        "Take what feels useful. "
-        "Use astrology as guidance, "
-        "not certainty."
+    thread_posts.append(
+        {
+            "text": root_text
+        }
     )
-    lines.append("")
-    lines.append(
+    # ------------------------------------------------
+    # 12 ZODIAC POSTS
+    # ------------------------------------------------
+    for item in horoscopes:
+        sign = item[
+            "sign"
+        ]
+        text = item[
+            "text"
+        ].strip()
+        symbol = ZODIAC_SYMBOLS.get(
+            sign,
+            ""
+        )
+        post_text = (
+            f"{symbol} {sign.title()}\n\n"
+            f"{text}"
+        )
+        # X character safety check
+        if len(post_text) > 280:
+            raise ValueError(
+                f"{sign} X thread post is "
+                f"{len(post_text)} characters. "
+                "Maximum allowed is 280."
+            )
+        thread_posts.append(
+            {
+                "text": post_text
+            }
+        )
+    # ------------------------------------------------
+    # FINAL POST
+    # ------------------------------------------------
+    final_text = (
+        "Astrology is guidance, "
+        "not certainty.\n\n"
         "#Mauksh #DailyHoroscope"
     )
-    return "\n".join(lines)
+    if len(final_text) > 280:
+        raise ValueError(
+            "X final post exceeds 280 characters."
+        )
+    thread_posts.append(
+        {
+            "text": final_text
+        }
+    )
+    return thread_posts
 # ==================================================
-# PUBLISH X TEXT POST
+# PUBLISH X THREAD
 # ==================================================
-def publish_to_x(horoscopes):
+def publish_to_x(
+    horoscopes
+):
     access_token = os.environ[
         "BUFFER_X_ACCESS_TOKEN"
     ]
-    channel_id = get_x_channel_id()
-    text = create_x_text(
-        horoscopes
+    channel_id = (
+        get_x_channel_id()
     )
-    print("\n========== X POST ==========\n")
-    print(text)
-    print("\n============================\n")
+    thread_posts = (
+        create_x_thread(
+            horoscopes
+        )
+    )
+    print(
+        "\n=============================="
+    )
+    print(
+        "X THREAD"
+    )
+    print(
+        "=============================="
+    )
+    for index, item in enumerate(
+        thread_posts
+    ):
+        print(
+            f"\n[{index + 1}/"
+            f"{len(thread_posts)}]"
+        )
+        print(
+            item["text"]
+        )
+        print(
+            f"Characters: "
+            f"{len(item['text'])}"
+        )
+    print(
+        "\n==============================\n"
+    )
+    # ------------------------------------------------
+    # IMPORTANT:
+    # Buffer requires:
+    #
+    # top-level text = first thread item
+    #
+    # metadata.twitter.thread =
+    # ALL thread items
+    # ------------------------------------------------
     mutation = """
-    mutation CreatePost(
+    mutation CreateThread(
       $input: CreatePostInput!
     ) {
       createPost(input: $input) {
@@ -723,14 +910,21 @@ def publish_to_x(horoscopes):
     """
     variables = {
         "input": {
+            # MUST MATCH FIRST THREAD ITEM
             "text":
-                text,
+                thread_posts[0]["text"],
             "channelId":
                 channel_id,
             "schedulingType":
                 "automatic",
             "mode":
                 "shareNow",
+            "metadata": {
+                "twitter": {
+                    "thread":
+                        thread_posts
+                }
+            }
         }
     }
     data = buffer_graphql(
@@ -744,18 +938,23 @@ def publish_to_x(horoscopes):
     )
     if result.get("message"):
         raise RuntimeError(
-            "Buffer rejected X post: "
+            "Buffer rejected X thread: "
             + result["message"]
         )
-    post = result.get("post")
-    if not post or not post.get("id"):
+    post = result.get(
+        "post"
+    )
+    if (
+        not post
+        or not post.get("id")
+    ):
         raise RuntimeError(
-            "Buffer did not return an X "
-            "post ID: "
+            "Buffer did not return "
+            "X thread post ID: "
             + json.dumps(data)
         )
     print(
-        "X Buffer post ID:",
+        "X Buffer thread ID:",
         post["id"]
     )
     print(
@@ -764,7 +963,7 @@ def publish_to_x(horoscopes):
     )
     return post
 # ==================================================
-# WAIT FOR BUFFER PUBLICATION
+# WAIT FOR PUBLICATION
 # ==================================================
 def wait_until_published(
     post_id,
@@ -785,13 +984,21 @@ def wait_until_published(
         time.time()
         + timeout_seconds
     )
-    while time.time() < deadline:
+    while (
+        time.time()
+        < deadline
+    ):
         data = buffer_graphql(
             access_token,
             query,
-            {"id": post_id}
+            {
+                "id":
+                    post_id
+            }
         )
-        post = data.get("post")
+        post = data.get(
+            "post"
+        )
         if post:
             status = str(
                 post.get(
@@ -800,13 +1007,15 @@ def wait_until_published(
                 )
             ).lower()
             print(
-                f"{platform_name} Buffer "
-                f"post status:",
+                f"{platform_name} "
+                f"Buffer post status:",
                 status
             )
             if (
                 status == "sent"
-                or post.get("sentAt")
+                or post.get(
+                    "sentAt"
+                )
             ):
                 return True
             if status in (
@@ -843,20 +1052,32 @@ def delete_temporary_image(
 # ==================================================
 def main():
     print(
-        "Starting Mauksh Daily Horoscope:",
+        "=================================="
+    )
+    print(
+        "Starting Mauksh Daily Horoscope"
+    )
+    print(
         TODAY.strftime(
             "%d %B %Y"
-        ),
+        )
+    )
+    print(
+        "=================================="
     )
     # ------------------------------------------------
-    # 1. GENERATE ONCE
+    # 1. GENERATE HOROSCOPES ONCE
     # ------------------------------------------------
-    horoscopes = generate_horoscopes()
+    horoscopes = (
+        generate_horoscopes()
+    )
     # ------------------------------------------------
-    # 2. CREATE INSTAGRAM IMAGE
+    # 2. CREATE INSTAGRAM POSTER
     # ------------------------------------------------
-    image_path = create_poster(
-        horoscopes
+    image_path = (
+        create_poster(
+            horoscopes
+        )
     )
     # ------------------------------------------------
     # 3. PREVIEW MODE
@@ -872,13 +1093,16 @@ def main():
             "Preview mode enabled."
         )
         print(
-            "No Instagram or X posts "
-            "will be created."
+            "No Instagram or X "
+            "posts will be created."
         )
         return
     # ------------------------------------------------
     # 4. INSTAGRAM
     # ------------------------------------------------
+    print(
+        "\n========== INSTAGRAM ==========\n"
+    )
     image_url, delete_url = (
         upload_to_picrd(
             image_path
@@ -908,8 +1132,11 @@ def main():
             "not confirmed."
         )
     # ------------------------------------------------
-    # 5. X
+    # 5. X THREAD
     # ------------------------------------------------
+    print(
+        "\n============== X ==============\n"
+    )
     x_post = publish_to_x(
         horoscopes
     )
@@ -924,11 +1151,11 @@ def main():
     )
     if x_published:
         print(
-            "X publication confirmed."
+            "X thread publication confirmed."
         )
     else:
         print(
-            "X publication was "
+            "X thread publication was "
             "not confirmed."
         )
     # ------------------------------------------------
@@ -943,8 +1170,23 @@ def main():
             "Image cleanup needs attention:",
             type(exc).__name__
         )
+    # ------------------------------------------------
+    # FINISHED
+    # ------------------------------------------------
+    print(
+        "\n=================================="
+    )
     print(
         "Mauksh horoscope workflow finished."
+    )
+    print(
+        "Instagram: 1 post"
+    )
+    print(
+        "X: 1 thread"
+    )
+    print(
+        "=================================="
     )
 # ==================================================
 # RUN
