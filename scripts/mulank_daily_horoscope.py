@@ -1308,79 +1308,29 @@ def publish_to_threads(
 
 # ==================================================
 # WAIT FOR PUBLICATION
+# NO LONG POLLING
 # ==================================================
 
 def wait_until_published(
     post_id,
     access_token,
     platform_name,
-    timeout_seconds=900
+    timeout_seconds=60
 ):
 
-    query = """
-    query GetPost($id: PostId!) {
-
-      post(input: { id: $id }) {
-
-        id
-        status
-        sentAt
-
-      }
-    }
-    """
-
-    deadline = (
-        time.time()
-        + timeout_seconds
+    print(
+        f"{platform_name} post created successfully."
     )
 
-    while time.time() < deadline:
+    print(
+        f"Buffer post ID: {post_id}"
+    )
 
-        data = buffer_graphql(
-            access_token,
-            query,
-            {
-                "id":
-                    post_id
-            }
-        )
+    print(
+        "Buffer will handle publication."
+    )
 
-        post = data.get(
-            "post"
-        )
-
-        if post:
-
-            status = str(
-                post.get(
-                    "status",
-                    ""
-                )
-            ).lower()
-
-            print(
-                f"{platform_name} "
-                f"status: {status}"
-            )
-
-            if (
-                status == "sent"
-                or post.get("sentAt")
-            ):
-
-                return True
-
-            if status in (
-                "error",
-                "failed"
-            ):
-
-                return False
-
-        time.sleep(20)
-
-    return False
+    return True
 
 
 # ==================================================
@@ -1507,7 +1457,7 @@ def main():
         if instagram_published:
 
             print(
-                "Instagram publication confirmed."
+                "Instagram sent to Buffer."
             )
 
     except Exception as exc:
@@ -1547,7 +1497,7 @@ def main():
         if x_published:
 
             print(
-                "X thread publication confirmed."
+                "X thread sent to Buffer."
             )
 
     except Exception as exc:
@@ -1589,7 +1539,7 @@ def main():
         if threads_published:
 
             print(
-                "Threads publication confirmed."
+                "Threads thread sent to Buffer."
             )
 
     except Exception as exc:
