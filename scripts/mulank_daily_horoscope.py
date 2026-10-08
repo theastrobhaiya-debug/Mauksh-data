@@ -748,6 +748,17 @@ def get_instagram_channel_id():
     )
 
 
+def get_facebook_channel_id():
+
+    return get_channel_id(
+        os.environ[
+            "BUFFER_FACEBOOK_ACCESS_TOKEN"
+        ],
+        "facebook",
+        "Facebook"
+    )
+
+
 def get_x_channel_id():
 
     return get_channel_id(
@@ -956,6 +967,133 @@ def publish_to_instagram(
 
     print(
         "Instagram Buffer post ID:",
+        post["id"]
+    )
+
+    return post
+
+
+# ==================================================
+# FACEBOOK
+# ==================================================
+
+def publish_to_facebook(
+    image_url
+):
+
+    access_token = os.environ[
+        "BUFFER_FACEBOOK_ACCESS_TOKEN"
+    ]
+
+    channel_id = (
+        get_facebook_channel_id()
+    )
+
+    caption = (
+        f"Mauksh Daily Numerology "
+        f"for {TODAY.strftime('%d %B %Y')}\n\n"
+
+        "Find your Mulank from your birth date "
+        "and read today's guidance.\n\n"
+
+        "Save this post for later.\n\n"
+
+        "#Mauksh #Mulank "
+        "#Numerology #DailyNumerology"
+    )
+
+    mutation = """
+    mutation CreatePost(
+      $input: CreatePostInput!
+    ) {
+      createPost(input: $input) {
+
+        ... on PostActionSuccess {
+          post {
+            id
+            text
+            status
+            dueAt
+          }
+        }
+
+        ... on MutationError {
+          message
+        }
+      }
+    }
+    """
+
+    variables = {
+
+        "input": {
+
+            "text":
+                caption,
+
+            "channelId":
+                channel_id,
+
+            "schedulingType":
+                "automatic",
+
+            "mode":
+                "shareNow",
+
+            "assets": [
+
+                {
+                    "image": {
+                        "url":
+                            image_url
+                    }
+                }
+
+            ],
+
+            "metadata": {
+
+                "facebook": {
+
+                    "type":
+                        "post"
+                }
+            }
+        }
+    }
+
+    data = buffer_graphql(
+        access_token,
+        mutation,
+        variables
+    )
+
+    result = data.get(
+        "createPost",
+        {}
+    )
+
+    if result.get("message"):
+
+        raise RuntimeError(
+            "Buffer rejected Facebook post: "
+            + result["message"]
+        )
+
+    post = result.get(
+        "post"
+    )
+
+    if not post or not post.get("id"):
+
+        raise RuntimeError(
+            "Buffer did not return Facebook "
+            "post ID: "
+            + json.dumps(data)
+        )
+
+    print(
+        "Facebook Buffer post ID:",
         post["id"]
     )
 
@@ -1413,13 +1551,16 @@ def main():
         )
 
         print(
-            "No Instagram, X or Threads "
+            "No Instagram, Facebook, X or Threads "
             "posts will be created."
         )
 
         return
 
-    # Upload image once
+    # ==================================================
+    # UPLOAD IMAGE ONCE
+    # ==================================================
+
     image_url, delete_url = (
         upload_to_picrd(
             image_path
@@ -1464,6 +1605,48 @@ def main():
 
         print(
             "Instagram failed:",
+            type(exc).__name__,
+            str(exc)
+        )
+
+    # ==========================================
+    # FACEBOOK
+    # ==========================================
+
+    print(
+        "\n========== FACEBOOK ============\n"
+    )
+
+    try:
+
+        facebook_post = (
+            publish_to_facebook(
+                image_url
+            )
+        )
+
+        facebook_published = (
+            wait_until_published(
+                facebook_post["id"],
+
+                os.environ[
+                    "BUFFER_FACEBOOK_ACCESS_TOKEN"
+                ],
+
+                "Facebook"
+            )
+        )
+
+        if facebook_published:
+
+            print(
+                "Facebook sent to Buffer."
+            )
+
+    except Exception as exc:
+
+        print(
+            "Facebook failed:",
             type(exc).__name__,
             str(exc)
         )
@@ -1581,6 +1764,10 @@ def main():
 
     print(
         "Instagram: 1 post"
+    )
+
+    print(
+        "Facebook: 1 post"
     )
 
     print(
