@@ -31,6 +31,9 @@ jobs:
           # Instagram Buffer account
           BUFFER_ACCESS_TOKEN: ${{ secrets.BUFFER_ACCESS_TOKEN }}
 
+          # Facebook Buffer account
+          BUFFER_FACEBOOK_ACCESS_TOKEN: ${{ secrets.BUFFER_FACEBOOK_ACCESS_TOKEN }}
+
           # X Buffer account
           BUFFER_X_ACCESS_TOKEN: ${{ secrets.BUFFER_X_ACCESS_TOKEN }}
 
