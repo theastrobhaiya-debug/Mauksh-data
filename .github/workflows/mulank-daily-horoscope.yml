@@ -38,6 +38,8 @@ jobs:
 
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
 
+          FREEIMAGE_HOST_API_KEY: ${{ secrets.FREEIMAGE_HOST_API_KEY }}
+
           OPENAI_MODEL: gpt-5-mini
 
         run: |
