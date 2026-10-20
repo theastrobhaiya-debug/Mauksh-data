@@ -1,8 +1,7 @@
 import json
 import os
 import time
-import textwrap
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import requests
@@ -26,7 +25,6 @@ ACCENT = (218, 157, 22)
 
 OUTPUT_PATH = "/tmp/mauksh_daily_mulank.jpg"
 
-
 MULANKS = [
     (1, "1, 10, 19, 28"),
     (2, "2, 11, 20, 29"),
@@ -45,31 +43,16 @@ MULANKS = [
 # ==================================================
 
 def get_font(size, bold=False):
-
     candidates = [
         "/usr/share/fonts/truetype/dejavu/"
-        + (
-            "DejaVuSans-Bold.ttf"
-            if bold
-            else "DejaVuSans.ttf"
-        ),
-
+        + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
         "/usr/share/fonts/truetype/liberation2/"
-        + (
-            "LiberationSans-Bold.ttf"
-            if bold
-            else "LiberationSans-Regular.ttf"
-        ),
+        + ("LiberationSans-Bold.ttf" if bold else "LiberationSans-Regular.ttf"),
     ]
 
     for path in candidates:
-
         if os.path.exists(path):
-
-            return ImageFont.truetype(
-                path,
-                size
-            )
+            return ImageFont.truetype(path, size)
 
     return ImageFont.load_default()
 
@@ -79,72 +62,36 @@ def get_font(size, bold=False):
 # ==================================================
 
 def reduce_to_single_digit(number):
-
     while number > 9:
-
-        number = sum(
-            int(digit)
-            for digit in str(number)
-        )
-
+        number = sum(int(digit) for digit in str(number))
     return number
 
 
 def calculate_daily_number(date):
-
-    total = (
-        date.day
-        + date.month
-        + date.year
-    )
-
+    total = date.day + date.month + date.year
     return reduce_to_single_digit(total)
 
 
 # ==================================================
-# OPENAI
-# GENERATE 9 ORIGINAL MULANK HOROSCOPES
+# OPENAI: GENERATE 9 ORIGINAL MULANK HOROSCOPES
 # ==================================================
 
 def generate_horoscopes():
-
-    client = OpenAI(
-        api_key=os.environ["OPENAI_API_KEY"]
-    )
-
-    date_text = TODAY.strftime(
-        "%d %B %Y"
-    )
-
-    daily_number = calculate_daily_number(
-        TODAY
-    )
-
-    mulank_names = [
-        str(number)
-        for number, _ in MULANKS
-    ]
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    date_text = TODAY.strftime("%d %B %Y")
+    daily_number = calculate_daily_number(TODAY)
+    mulank_names = [str(number) for number, _ in MULANKS]
 
     prompt = f"""
-You are an experienced Vedic numerology writer
-creating daily numerology guidance for the Mauksh brand.
+You are an experienced Vedic numerology writer creating daily guidance for the Mauksh brand.
 
-DATE:
-{date_text}
+DATE: {date_text}
+DAILY NUMEROLOGY NUMBER: {daily_number}
+SYSTEM: Vedic / Indian numerology.
 
-DAILY NUMEROLOGY NUMBER:
-{daily_number}
-
-SYSTEM:
-Use Vedic / Indian numerology principles.
-
-TASK:
-Generate one original daily horoscope for each
-Mulank from 1 to 9.
+Generate one original daily horoscope for each Mulank from 1 to 9.
 
 MULANK MEANING:
-Mulank is calculated from the day of birth only.
-
 1 = born on 1, 10, 19, 28
 2 = born on 2, 11, 20, 29
 3 = born on 3, 12, 21, 30
@@ -155,203 +102,129 @@ Mulank is calculated from the day of birth only.
 8 = born on 8, 17, 26
 9 = born on 9, 18, 27
 
-NUMEROLOGY GUIDELINES:
+GUIDELINES:
+- Interpret the day's numerological influence through each Mulank.
+- Consider traditional Vedic numerology characteristics.
+- Do not invent planetary positions, transits, conjunctions, nakshatras or astronomical events.
+- Do not claim guaranteed outcomes.
+- Keep guidance practical and useful.
+- Make every prediction distinctly different.
 
-1. Interpret the day's numerological influence
-   through each Mulank.
-
-2. Consider traditional Vedic numerology
-   characteristics of each Mulank.
-
-3. Do not invent specific planetary positions,
-   transits, conjunctions, nakshatras or
-   astronomical events.
-
-4. Do not claim guaranteed outcomes.
-
-5. Keep the guidance practical and useful.
-
-6. The prediction should feel specifically
-   different for each Mulank.
-
-STRICT NON-REPETITION:
-
-Review all 9 predictions together.
-
-Do not copy or paraphrase one Mulank prediction
-for another.
-
-Every Mulank must have a distinct central theme.
-
-Avoid repeated openings.
-
-Avoid repeated sentence structures.
-
-Avoid generic recycled horoscope clichés.
-
-Do not simply replace a few words between predictions.
-
-If two predictions feel similar, rewrite them.
+NON-REPETITION:
+Review all 9 predictions together. Do not copy or paraphrase one Mulank prediction for another.
+Give every Mulank a distinct central theme. Avoid repeated openings, sentence structures and clichés.
+Do not merely replace a few words between predictions.
 
 STYLE:
+- English only.
+- Exactly 18–20 words per horoscope.
+- Warm, practical, grounded, encouraging and thoughtful.
+- Focus on career, money, relationships, communication, decisions or personal growth.
+- Do not mention planet names or numerological calculations inside the prediction.
+- No fear, guaranteed predictions, Hindi, Hinglish, emojis, hashtags or Markdown.
+- Write complete, grammatically finished sentences.
+- Never end a prediction with an unfinished phrase.
 
-English only.
+Return exactly these Mulanks in this order: {json.dumps(mulank_names)}
 
-Each horoscope must contain 18–24 words.
-
-Warm.
-
-Practical.
-
-Grounded.
-
-Encouraging.
-
-Thoughtful.
-
-Focus on:
-
-career
-money
-relationships
-communication
-decisions
-personal growth
-
-Do not mention planet names.
-
-Do not mention numerological calculations
-inside the prediction.
-
-Do not use fear.
-
-Do not make guaranteed predictions.
-
-No Hindi.
-
-No Hinglish.
-
-No emojis.
-
-No hashtags.
-
-No Markdown.
-
-Return exactly 9 entries in this order:
-
-{json.dumps(mulank_names)}
-
-Return ONLY valid JSON.
-
-Format:
-
+Return ONLY valid JSON:
 {{
   "horoscopes": [
-    {{
-      "mulank": 1,
-      "text": "Daily guidance."
-    }},
-    {{
-      "mulank": 2,
-      "text": "Daily guidance."
-    }}
+    {{"mulank": 1, "text": "Complete daily guidance."}},
+    {{"mulank": 2, "text": "Complete daily guidance."}}
   ]
 }}
-
 Include all 9 Mulanks.
 """
 
     response = client.responses.create(
-        model=os.getenv(
-            "OPENAI_MODEL",
-            "gpt-5-mini"
-        ),
+        model=os.getenv("OPENAI_MODEL", "gpt-5-mini"),
         input=prompt,
     )
 
     raw = response.output_text.strip()
-
     if raw.startswith("```"):
-
-        raw = (
-            raw
-            .split("\n", 1)[1]
-            .rsplit("```", 1)[0]
-            .strip()
-        )
+        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
     data = json.loads(raw)
+    horoscopes = data.get("horoscopes", [])
 
-    horoscopes = data.get(
-        "horoscopes",
-        []
-    )
+    if not isinstance(horoscopes, list) or len(horoscopes) != 9:
+        raise ValueError("Expected exactly 9 Mulank horoscopes.")
 
-    if (
-        not isinstance(horoscopes, list)
-        or len(horoscopes) != 9
-    ):
-
-        raise ValueError(
-            "Expected exactly 9 Mulank horoscopes."
-        )
-
-    for index, item in enumerate(
-        horoscopes
-    ):
-
+    for index, item in enumerate(horoscopes):
         expected_mulank = MULANKS[index][0]
 
         if not isinstance(item, dict):
+            raise ValueError("Invalid horoscope entry.")
 
-            raise ValueError(
-                "Invalid horoscope entry."
-            )
-
-        actual_mulank = int(
-            item.get(
-                "mulank",
-                0
-            )
-        )
-
+        actual_mulank = int(item.get("mulank", 0))
         if actual_mulank != expected_mulank:
-
             raise ValueError(
-                f"Expected Mulank "
-                f"{expected_mulank} "
-                f"at position "
-                f"{index + 1}."
+                f"Expected Mulank {expected_mulank} at position {index + 1}."
             )
 
-        text = str(
-            item.get(
-                "text",
-                ""
-            )
-        ).strip()
+        text = str(item.get("text", "")).strip()
+        word_count = len(text.split())
 
-        word_count = len(
-            text.split()
-        )
-
-        if not 18 <= word_count <= 24:
-
+        if not 18 <= word_count <= 20:
             raise ValueError(
-                f"Mulank {expected_mulank} "
-                f"has {word_count} words; "
-                "expected 18–24."
+                f"Mulank {expected_mulank} has {word_count} words; "
+                "expected 18–20. Rerun the workflow."
+            )
+
+        if not text.endswith((".", "!", "?")):
+            raise ValueError(
+                f"Mulank {expected_mulank} does not end with a complete sentence."
             )
 
         item["mulank"] = expected_mulank
         item["text"] = text
 
-    print(
-        f"Generated and validated 9 Mulank "
-        f"horoscopes for {date_text}."
-    )
-
+    print(f"Generated and validated 9 Mulank horoscopes for {date_text}.")
     return horoscopes
+
+
+# ==================================================
+# FIT COMPLETE TEXT INSIDE A CARD
+# ==================================================
+
+def fit_horoscope_text(draw, text, max_width, max_height):
+    """Reduce font size until the entire prediction fits; never truncate it."""
+    for font_size in (16, 15, 14, 13, 12):
+        font = get_font(font_size)
+        words = text.split()
+        lines = []
+        current_line = ""
+
+        for word in words:
+            candidate = f"{current_line} {word}".strip()
+            bbox = draw.textbbox((0, 0), candidate, font=font)
+
+            if bbox[2] - bbox[0] <= max_width:
+                current_line = candidate
+            else:
+                if current_line:
+                    lines.append(current_line)
+                current_line = word
+
+                bbox = draw.textbbox((0, 0), word, font=font)
+                if bbox[2] - bbox[0] > max_width:
+                    raise ValueError(f"Word cannot fit inside card: {word}")
+
+        if current_line:
+            lines.append(current_line)
+
+        line_height = font_size + 6
+        total_height = len(lines) * line_height
+
+        if total_height <= max_height:
+            return font, lines, line_height
+
+    raise ValueError(
+        "Complete Mulank prediction cannot fit inside its card. "
+        "Shorten the generated text or enlarge the card."
+    )
 
 
 # ==================================================
@@ -359,218 +232,101 @@ Include all 9 Mulanks.
 # ==================================================
 
 def create_poster(horoscopes):
-
-    image = Image.new(
-        "RGB",
-        (WIDTH, HEIGHT),
-        GOLD
-    )
-
+    image = Image.new("RGB", (WIDTH, HEIGHT), GOLD)
     draw = ImageDraw.Draw(image)
 
-    # Decorative arcs
     draw.arc(
-        (-180, -180, 250, 250),
-        0,
-        270,
-        fill=(232, 168, 30),
-        width=5
+        (-180, -180, 250, 250), 0, 270,
+        fill=(232, 168, 30), width=5
     )
-
     draw.arc(
-        (850, 1130, 1260, 1540),
-        180,
-        360,
-        fill=(232, 168, 30),
-        width=5
-    )
-
-    # Header
-    draw.text(
-        (WIDTH // 2, 22),
-        "mauksh.com",
-        font=get_font(43, True),
-        fill=DARK,
-        anchor="mt",
+        (850, 1130, 1260, 1540), 180, 360,
+        fill=(232, 168, 30), width=5
     )
 
     draw.text(
-        (WIDTH // 2, 73),
-        "SPIRITUALITY IS PERSONAL",
-        font=get_font(17, True),
-        fill=DARK,
-        anchor="mt",
+        (WIDTH // 2, 22), "mauksh.com",
+        font=get_font(43, True), fill=DARK, anchor="mt"
     )
-
     draw.text(
-        (WIDTH // 2, 116),
-        "MAUKSH DAILY NUMEROLOGY",
-        font=get_font(40, True),
-        fill=DARK,
-        anchor="mt",
+        (WIDTH // 2, 73), "SPIRITUALITY IS PERSONAL",
+        font=get_font(17, True), fill=DARK, anchor="mt"
     )
-
+    draw.text(
+        (WIDTH // 2, 116), "MAUKSH DAILY NUMEROLOGY",
+        font=get_font(40, True), fill=DARK, anchor="mt"
+    )
     draw.text(
         (WIDTH // 2, 176),
         f"FOR {TODAY.strftime('%d %B %Y').upper()}",
-        font=get_font(27, True),
-        fill=DARK,
-        anchor="mt",
+        font=get_font(27, True), fill=DARK, anchor="mt"
     )
-
     draw.text(
-        (WIDTH // 2, 221),
-        "MULANK 1 – 9  |  DAILY GUIDANCE",
-        font=get_font(17, True),
-        fill=DARK,
-        anchor="mt",
+        (WIDTH // 2, 221), "MULANK 1 – 9  |  DAILY GUIDANCE",
+        font=get_font(17, True), fill=DARK, anchor="mt"
     )
 
-    # Cards
     margin_x = 55
     gap_x = 14
-
-    card_w = (
-        WIDTH
-        - 2 * margin_x
-        - 2 * gap_x
-    ) // 3
-
+    card_w = (WIDTH - 2 * margin_x - 2 * gap_x) // 3
     top = 270
     gap_y = 12
     card_h = 290
 
-    for index, item in enumerate(
-        horoscopes
-    ):
-
+    for index, item in enumerate(horoscopes):
         col = index % 3
         row = index // 3
-
-        x = (
-            margin_x
-            + col * (
-                card_w + gap_x
-            )
-        )
-
-        y = (
-            top
-            + row * (
-                card_h + gap_y
-            )
-        )
+        x = margin_x + col * (card_w + gap_x)
+        y = top + row * (card_h + gap_y)
 
         draw.rounded_rectangle(
-            (
-                x,
-                y,
-                x + card_w,
-                y + card_h
-            ),
-            radius=18,
-            fill=CARD,
-            outline=(255, 255, 255),
-            width=2,
+            (x, y, x + card_w, y + card_h),
+            radius=18, fill=CARD, outline=(255, 255, 255), width=2
         )
 
         mulank = item["mulank"]
-
-        birth_dates = dict(
-            MULANKS
-        )[mulank]
+        birth_dates = dict(MULANKS)[mulank]
 
         draw.text(
-            (
-                x + card_w // 2,
-                y + 12
-            ),
+            (x + card_w // 2, y + 12),
             f"MULANK {mulank}",
-            font=get_font(23, True),
-            fill=DARK,
-            anchor="mt",
+            font=get_font(23, True), fill=DARK, anchor="mt"
         )
-
         draw.text(
-            (
-                x + card_w // 2,
-                y + 47
-            ),
+            (x + card_w // 2, y + 47),
             f"Born on {birth_dates}",
-            font=get_font(12, True),
-            fill=DARK,
-            anchor="mt",
+            font=get_font(12, True), fill=DARK, anchor="mt"
         )
-
         draw.line(
-            (
-                x + card_w // 2 - 24,
-                y + 70,
-                x + card_w // 2 + 24,
-                y + 70,
-            ),
-            fill=ACCENT,
-            width=3,
+            (x + card_w // 2 - 24, y + 70,
+             x + card_w // 2 + 24, y + 70),
+            fill=ACCENT, width=3
         )
 
-        lines = textwrap.wrap(
+        font, lines, line_height = fit_horoscope_text(
+            draw,
             str(item["text"]).strip(),
-            width=26,
-            break_long_words=True,
+            max_width=card_w - 34,
+            max_height=card_h - 88,
         )
-
-        if len(lines) > 8:
-
-            lines = lines[:8]
-
-            lines[-1] = (
-                lines[-1]
-                .rstrip(" .,;:")
-                + "..."
-            )
 
         yy = y + 88
-
         for line in lines:
+            draw.text((x + 17, yy), line, font=font, fill=DARK)
+            yy += line_height
 
-            draw.text(
-                (x + 17, yy),
-                line,
-                font=get_font(16),
-                fill=DARK,
-            )
-
-            yy += 25
-
-    # Footer
     draw.text(
-        (WIDTH // 2, 1239),
-        "mauksh.com",
-        font=get_font(31, True),
-        fill=DARK,
-        anchor="mt",
+        (WIDTH // 2, 1239), "mauksh.com",
+        font=get_font(31, True), fill=DARK, anchor="mt"
     )
-
     draw.text(
         (WIDTH // 2, 1283),
         "NUMEROLOGY  |  SELF GROWTH  |  A BETTER YOU",
-        font=get_font(14, True),
-        fill=DARK,
-        anchor="mt",
+        font=get_font(14, True), fill=DARK, anchor="mt"
     )
 
-    image.save(
-        OUTPUT_PATH,
-        "JPEG",
-        quality=94,
-        optimize=True
-    )
-
-    print(
-        "Poster created:",
-        OUTPUT_PATH
-    )
-
+    image.save(OUTPUT_PATH, "JPEG", quality=94, optimize=True)
+    print("Poster created:", OUTPUT_PATH)
     return OUTPUT_PATH
 
 
@@ -578,60 +334,30 @@ def create_poster(horoscopes):
 # BUFFER GRAPHQL HELPER
 # ==================================================
 
-def buffer_graphql(
-    access_token,
-    query,
-    variables=None
-):
-
+def buffer_graphql(access_token, query, variables=None):
     response = requests.post(
         "https://api.buffer.com",
         headers={
-            "Authorization":
-                "Bearer " + access_token,
-
-            "Content-Type":
-                "application/json",
+            "Authorization": "Bearer " + access_token,
+            "Content-Type": "application/json",
         },
-
-        json={
-            "query": query,
-            "variables":
-                variables or {},
-        },
-
+        json={"query": query, "variables": variables or {}},
         timeout=60,
     )
-
     response.raise_for_status()
-
     result = response.json()
 
     if result.get("errors"):
+        raise RuntimeError("Buffer API error: " + json.dumps(result["errors"]))
 
-        raise RuntimeError(
-            "Buffer API error: "
-            + json.dumps(
-                result["errors"]
-            )
-        )
-
-    return result.get(
-        "data",
-        {}
-    )
+    return result.get("data", {})
 
 
 # ==================================================
 # FIND CHANNEL
 # ==================================================
 
-def get_channel_id(
-    access_token,
-    service,
-    platform_name
-):
-
+def get_channel_id(access_token, service, platform_name):
     organizations_query = """
     query GetOrganizations {
       account {
@@ -642,242 +368,126 @@ def get_channel_id(
       }
     }
     """
-
-    data = buffer_graphql(
-        access_token,
-        organizations_query
-    )
-
-    organizations = (
-        data
-        .get("account", {})
-        .get(
-            "organizations",
-            []
-        )
-    )
-
+    data = buffer_graphql(access_token, organizations_query)
+    organizations = data.get("account", {}).get("organizations", [])
     matching_channels = []
 
     for organization in organizations:
-
-        organization_id = (
-            organization["id"]
-        )
-
         channels_query = """
-        query GetChannels(
-          $organizationId: OrganizationId!
-        ) {
-          channels(
-            input: {
-              organizationId: $organizationId
-            }
-          ) {
+        query GetChannels($organizationId: OrganizationId!) {
+          channels(input: { organizationId: $organizationId }) {
             id
             name
             service
           }
         }
         """
-
         channel_data = buffer_graphql(
             access_token,
             channels_query,
-            {
-                "organizationId":
-                    organization_id
-            },
+            {"organizationId": organization["id"]},
         )
 
-        for channel in channel_data.get(
-            "channels",
-            []
-        ):
-
-            channel_service = str(
-                channel.get(
-                    "service",
-                    ""
-                )
-            ).lower()
-
-            if (
-                channel_service
-                == service.lower()
-            ):
-
-                matching_channels.append(
-                    channel
-                )
+        for channel in channel_data.get("channels", []):
+            if str(channel.get("service", "")).lower() == service.lower():
+                matching_channels.append(channel)
 
     if len(matching_channels) != 1:
-
         raise RuntimeError(
-            f"Expected exactly one "
-            f"{platform_name} channel; "
-            f"found "
-            f"{len(matching_channels)}."
+            f"Expected exactly one {platform_name} channel; "
+            f"found {len(matching_channels)}. No post was created."
         )
 
     channel = matching_channels[0]
-
-    print(
-        f"Selected {platform_name} channel:",
-        channel.get(
-            "name",
-            platform_name
-        )
-    )
-
+    print(f"Selected {platform_name} channel:", channel.get("name", platform_name))
     return channel["id"]
 
 
-# ==================================================
-# CHANNELS
-# ==================================================
-
 def get_instagram_channel_id():
-
     return get_channel_id(
-        os.environ[
-            "BUFFER_ACCESS_TOKEN"
-        ],
-        "instagram",
-        "Instagram"
+        os.environ["BUFFER_ACCESS_TOKEN"], "instagram", "Instagram"
     )
 
 
 def get_facebook_channel_id():
-
     return get_channel_id(
-        os.environ[
-            "BUFFER_FACEBOOK_ACCESS_TOKEN"
-        ],
-        "facebook",
-        "Facebook"
+        os.environ["BUFFER_FACEBOOK_ACCESS_TOKEN"], "facebook", "Facebook"
     )
 
 
 def get_x_channel_id():
-
     return get_channel_id(
-        os.environ[
-            "BUFFER_X_ACCESS_TOKEN"
-        ],
-        "twitter",
-        "X"
+        os.environ["BUFFER_X_ACCESS_TOKEN"], "twitter", "X"
     )
 
 
 def get_threads_channel_id():
-
     return get_channel_id(
-        os.environ[
-            "BUFFER_API_KEY"
-        ],
-        "threads",
-        "Threads"
+        os.environ["BUFFER_API_KEY"], "threads", "Threads"
     )
 
 
 # ==================================================
-# UPLOAD IMAGE TO PICRD
+# UPLOAD IMAGE TO FREEIMAGE.HOST
 # ==================================================
 
-def upload_to_picrd(
-    image_path
-):
+def upload_to_freeimage_host(image_path):
+    api_key = os.environ.get("FREEIMAGE_HOST_API_KEY")
 
-    with open(
-        image_path,
-        "rb"
-    ) as file:
+    if not api_key:
+        raise RuntimeError(
+            "FREEIMAGE_HOST_API_KEY environment variable is missing."
+        )
 
+    with open(image_path, "rb") as file:
         response = requests.post(
-            "https://picrd.com/api/upload",
-
+            "https://freeimage.host/api/1/upload",
+            params={"key": api_key, "format": "json"},
             files={
-                "file": (
+                "source": (
                     "mauksh_daily_mulank.jpg",
                     file,
                     "image/jpeg",
                 )
             },
-
-            data={
-                "visibility":
-                    "unlisted",
-
-                "ttl_seconds":
-                    "86400",
-            },
-
-            timeout=60,
+            timeout=120,
         )
 
     response.raise_for_status()
 
-    result = response.json()
+    try:
+        result = response.json()
+    except ValueError as exc:
+        raise RuntimeError(
+            "Freeimage.host returned non-JSON data: "
+            + response.text[:500]
+        ) from exc
 
-    image_url = result.get(
-        "image_url"
-    )
-
-    delete_url = result.get(
-        "delete_url"
-    )
+    image_data = result.get("image") or {}
+    image_url = image_data.get("url")
 
     if not image_url:
-
         raise RuntimeError(
-            "Image host did not return "
-            "image_url: "
+            "Freeimage.host did not return an image URL: "
             + json.dumps(result)
         )
 
-    print(
-        "Image uploaded to temporary hosting."
-    )
+    print("Image uploaded successfully to Freeimage.host.")
+    print("Direct image URL:", image_url)
 
-    return image_url, delete_url
+    # Freeimage.host's response is not Picrd's response;
+    # no Picrd delete_url or expiry fields are assumed.
+    return image_url, None
 
 
 # ==================================================
-# INSTAGRAM
+# CREATE BUFFER POST
 # ==================================================
 
-def publish_to_instagram(
-    image_url
-):
-
-    access_token = os.environ[
-        "BUFFER_ACCESS_TOKEN"
-    ]
-
-    channel_id = (
-        get_instagram_channel_id()
-    )
-
-    caption = (
-        f"Mauksh Daily Numerology "
-        f"for {TODAY.strftime('%d %B %Y')}\n\n"
-
-        "Find your Mulank from your birth date "
-        "and read today's guidance.\n\n"
-
-        "Save this post for later.\n\n"
-
-        "#Mauksh #Mulank "
-        "#Numerology #DailyNumerology"
-    )
-
+def create_buffer_post(access_token, channel_id, text, metadata, assets=None):
     mutation = """
-    mutation CreatePost(
-      $input: CreatePostInput!
-    ) {
+    mutation CreatePost($input: CreatePostInput!) {
       createPost(input: $input) {
-
         ... on PostActionSuccess {
           post {
             id
@@ -886,7 +496,6 @@ def publish_to_instagram(
             dueAt
           }
         }
-
         ... on MutationError {
           message
         }
@@ -894,309 +503,128 @@ def publish_to_instagram(
     }
     """
 
-    variables = {
-
-        "input": {
-
-            "text":
-                caption,
-
-            "channelId":
-                channel_id,
-
-            "schedulingType":
-                "automatic",
-
-            "mode":
-                "shareNow",
-
-            "assets": [
-
-                {
-                    "image": {
-                        "url":
-                            image_url
-                    }
-                }
-
-            ],
-
-            "metadata": {
-
-                "instagram": {
-
-                    "type":
-                        "post",
-
-                    "shouldShareToFeed":
-                        True,
-                }
-            },
-        }
+    post_input = {
+        "text": text,
+        "channelId": channel_id,
+        "schedulingType": "automatic",
+        "mode": "shareNow",
+        "metadata": metadata,
     }
+    if assets is not None:
+        post_input["assets"] = assets
 
     data = buffer_graphql(
-        access_token,
-        mutation,
-        variables
+        access_token, mutation, {"input": post_input}
     )
-
-    result = data.get(
-        "createPost",
-        {}
-    )
+    result = data.get("createPost", {})
 
     if result.get("message"):
+        raise RuntimeError(result["message"])
 
-        raise RuntimeError(
-            "Buffer rejected Instagram post: "
-            + result["message"]
-        )
-
-    post = result.get(
-        "post"
-    )
-
+    post = result.get("post")
     if not post or not post.get("id"):
+        raise RuntimeError("Buffer did not return a post ID: " + json.dumps(data))
 
-        raise RuntimeError(
-            "Buffer did not return Instagram "
-            "post ID: "
-            + json.dumps(data)
-        )
-
-    print(
-        "Instagram Buffer post ID:",
-        post["id"]
-    )
-
+    print("Buffer post ID:", post["id"])
+    print("Initial status:", post.get("status"))
     return post
 
 
 # ==================================================
-# FACEBOOK
+# INSTAGRAM POST
 # ==================================================
 
-def publish_to_facebook(
-    image_url
-):
-
-    access_token = os.environ[
-        "BUFFER_FACEBOOK_ACCESS_TOKEN"
-    ]
-
-    channel_id = (
-        get_facebook_channel_id()
-    )
+def publish_to_instagram(image_url):
+    token = os.environ["BUFFER_ACCESS_TOKEN"]
+    channel_id = get_instagram_channel_id()
 
     caption = (
-        f"Mauksh Daily Numerology "
-        f"for {TODAY.strftime('%d %B %Y')}\n\n"
-
-        "Find your Mulank from your birth date "
-        "and read today's guidance.\n\n"
-
+        f"Mauksh Daily Numerology for {TODAY.strftime('%d %B %Y')}\n\n"
+        "Find your Mulank from your birth date and read today's guidance.\n\n"
         "Save this post for later.\n\n"
-
-        "#Mauksh #Mulank "
-        "#Numerology #DailyNumerology"
+        "#Mauksh #Mulank #Numerology #DailyNumerology"
     )
 
-    mutation = """
-    mutation CreatePost(
-      $input: CreatePostInput!
-    ) {
-      createPost(input: $input) {
-
-        ... on PostActionSuccess {
-          post {
-            id
-            text
-            status
-            dueAt
-          }
-        }
-
-        ... on MutationError {
-          message
-        }
-      }
-    }
-    """
-
-    variables = {
-
-        "input": {
-
-            "text":
-                caption,
-
-            "channelId":
-                channel_id,
-
-            "schedulingType":
-                "automatic",
-
-            "mode":
-                "shareNow",
-
-            "assets": [
-
-                {
-                    "image": {
-                        "url":
-                            image_url
-                    }
-                }
-
-            ],
-
-            "metadata": {
-
-                "facebook": {
-
-                    "type":
-                        "post"
-                }
-            }
-        }
-    }
-
-    data = buffer_graphql(
-        access_token,
-        mutation,
-        variables
+    return create_buffer_post(
+        token,
+        channel_id,
+        caption,
+        {"instagram": {"type": "post", "shouldShareToFeed": True}},
+        [{"image": {"url": image_url}}],
     )
-
-    result = data.get(
-        "createPost",
-        {}
-    )
-
-    if result.get("message"):
-
-        raise RuntimeError(
-            "Buffer rejected Facebook post: "
-            + result["message"]
-        )
-
-    post = result.get(
-        "post"
-    )
-
-    if not post or not post.get("id"):
-
-        raise RuntimeError(
-            "Buffer did not return Facebook "
-            "post ID: "
-            + json.dumps(data)
-        )
-
-    print(
-        "Facebook Buffer post ID:",
-        post["id"]
-    )
-
-    return post
 
 
 # ==================================================
-# MULANK SYMBOLS
+# FACEBOOK POST
 # ==================================================
 
-MULANK_SYMBOLS = {
-    1: "1",
-    2: "2",
-    3: "3",
-    4: "4",
-    5: "5",
-    6: "6",
-    7: "7",
-    8: "8",
-    9: "9",
-}
+def publish_to_facebook(image_url):
+    token = os.environ["BUFFER_FACEBOOK_ACCESS_TOKEN"]
+    channel_id = get_facebook_channel_id()
+
+    caption = (
+        f"Mauksh Daily Numerology for {TODAY.strftime('%d %B %Y')}\n\n"
+        "Find your Mulank from your birth date and read today's guidance.\n\n"
+        "Save this post for later.\n\n"
+        "#Mauksh #Mulank #Numerology #DailyNumerology"
+    )
+
+    return create_buffer_post(
+        token,
+        channel_id,
+        caption,
+        {"facebook": {"type": "post"}},
+        [{"image": {"url": image_url}}],
+    )
 
 
 # ==================================================
 # CREATE THREAD ITEMS
 # ==================================================
 
-def create_thread_items(
-    horoscopes,
-    platform
-):
-
+def create_thread_items(horoscopes, platform):
     thread_posts = []
 
-    # Root
-    first = horoscopes[0]
-
-    first_birth_dates = dict(
-        MULANKS
-    )[first["mulank"]]
-
-    first_text = (
-        f"Mauksh Daily Numerology\n\n"
-        f"{TODAY.strftime('%d %B %Y')}\n\n"
-
-        f"Mulank {first['mulank']}\n\n"
-
-        f"Born on {first_birth_dates}\n\n"
-
-        f"{first['text']}"
-    )
-
-    thread_posts.append(
-        {
-            "text":
-                first_text
-        }
-    )
-
-    # Remaining
-    for item in horoscopes[1:]:
-
+    for index, item in enumerate(horoscopes):
         mulank = item["mulank"]
+        birth_dates = dict(MULANKS)[mulank]
 
-        birth_dates = dict(
-            MULANKS
-        )[mulank]
+        if index == 0:
+            post_text = (
+                f"Mauksh Daily Numerology\n\n"
+                f"{TODAY.strftime('%d %B %Y')}\n\n"
+                f"Mulank {mulank}\n\n"
+                f"Born on {birth_dates}\n\n"
+                f"{item['text']}"
+            )
+        else:
+            post_text = (
+                f"Mulank {mulank}\n\n"
+                f"Born on {birth_dates}\n\n"
+                f"{item['text']}"
+            )
 
-        post_text = (
-            f"Mulank {mulank}\n\n"
-            f"Born on {birth_dates}\n\n"
-            f"{item['text']}"
-        )
+        thread_posts.append({"text": post_text})
 
-        thread_posts.append(
-            {
-                "text":
-                    post_text
-            }
-        )
-
-    # Final post
     thread_posts[-1]["text"] += (
-
-        "\n\n"
-        "Take what feels useful. "
-        "Numerology is guidance, not certainty.\n\n"
+        "\n\nTake what feels useful. Numerology is guidance, not certainty.\n\n"
         "#Mauksh #Mulank"
     )
 
-    # X validation
     if platform == "x":
-
-        for item in thread_posts:
-
-            if len(
-                item["text"]
-            ) > 280:
-
-                raise ValueError(
-                    "X post exceeds 280 characters: "
-                    + item["text"]
-                )
+        for index, item in enumerate(thread_posts):
+            if len(item["text"]) > 280:
+                if index == 8:
+                    item["text"] = (
+                        f"Mulank 9\n\n"
+                        f"Born on {dict(MULANKS)[9]}\n\n"
+                        f"{horoscopes[-1]['text']}\n\n"
+                        "#Mauksh #Mulank"
+                    )
+                if len(item["text"]) > 280:
+                    raise ValueError(
+                        f"X post {index + 1} exceeds 280 characters."
+                    )
 
     return thread_posts
 
@@ -1205,300 +633,87 @@ def create_thread_items(
 # PUBLISH X THREAD
 # ==================================================
 
-def publish_to_x(
-    horoscopes
-):
+def publish_to_x(horoscopes):
+    token = os.environ["BUFFER_X_ACCESS_TOKEN"]
+    channel_id = get_x_channel_id()
+    thread_posts = create_thread_items(horoscopes, "x")
 
-    access_token = os.environ[
-        "BUFFER_X_ACCESS_TOKEN"
-    ]
-
-    channel_id = (
-        get_x_channel_id()
-    )
-
-    thread_posts = create_thread_items(
-        horoscopes,
-        "x"
-    )
-
-    print(
-        "\n========== X THREAD ==========\n"
-    )
-
-    for index, item in enumerate(
-        thread_posts
-    ):
-
+    print("\n========== X THREAD ==========\n")
+    for index, item in enumerate(thread_posts):
         print(
-            f"X [{index + 1}/"
-            f"{len(thread_posts)}] "
+            f"X [{index + 1}/{len(thread_posts)}] "
             f"{len(item['text'])} characters"
         )
 
-    mutation = """
-    mutation CreateThread(
-      $input: CreatePostInput!
-    ) {
-      createPost(input: $input) {
-
-        ... on PostActionSuccess {
-          post {
-            id
-            text
-            status
-            dueAt
-          }
-        }
-
-        ... on MutationError {
-          message
-        }
-      }
-    }
-    """
-
-    variables = {
-
-        "input": {
-
-            "text":
-                thread_posts[0]["text"],
-
-            "channelId":
-                channel_id,
-
-            "schedulingType":
-                "automatic",
-
-            "mode":
-                "shareNow",
-
-            "metadata": {
-
-                "twitter": {
-
-                    "thread":
-                        thread_posts
-                }
-            }
-        }
-    }
-
-    data = buffer_graphql(
-        access_token,
-        mutation,
-        variables
+    return create_buffer_post(
+        token,
+        channel_id,
+        thread_posts[0]["text"],
+        {"twitter": {"thread": thread_posts}},
     )
-
-    result = data.get(
-        "createPost",
-        {}
-    )
-
-    if result.get("message"):
-
-        raise RuntimeError(
-            "Buffer rejected X thread: "
-            + result["message"]
-        )
-
-    post = result.get(
-        "post"
-    )
-
-    if not post or not post.get("id"):
-
-        raise RuntimeError(
-            "Buffer did not return X thread ID: "
-            + json.dumps(data)
-        )
-
-    print(
-        "X Buffer thread ID:",
-        post["id"]
-    )
-
-    return post
 
 
 # ==================================================
 # PUBLISH THREADS THREAD
 # ==================================================
 
-def publish_to_threads(
-    horoscopes
-):
+def publish_to_threads(horoscopes):
+    token = os.environ["BUFFER_API_KEY"]
+    channel_id = get_threads_channel_id()
+    thread_posts = create_thread_items(horoscopes, "threads")
 
-    access_token = os.environ[
-        "BUFFER_API_KEY"
-    ]
-
-    channel_id = (
-        get_threads_channel_id()
-    )
-
-    thread_posts = create_thread_items(
-        horoscopes,
-        "threads"
-    )
-
-    print(
-        "\n======= THREADS THREAD =======\n"
-    )
-
-    for index, item in enumerate(
-        thread_posts
-    ):
-
+    print("\n======= THREADS THREAD =======\n")
+    for index, item in enumerate(thread_posts):
         print(
-            f"Threads [{index + 1}/"
-            f"{len(thread_posts)}] "
+            f"Threads [{index + 1}/{len(thread_posts)}] "
             f"{len(item['text'])} characters"
         )
 
-    mutation = """
-    mutation CreateThreadsThread(
-      $input: CreatePostInput!
-    ) {
-      createPost(input: $input) {
-
-        ... on PostActionSuccess {
-          post {
-            id
-            text
-            status
-            dueAt
-          }
-        }
-
-        ... on MutationError {
-          message
-        }
-      }
-    }
-    """
-
-    variables = {
-
-        "input": {
-
-            "text":
-                thread_posts[0]["text"],
-
-            "channelId":
-                channel_id,
-
-            "schedulingType":
-                "automatic",
-
-            "mode":
-                "shareNow",
-
-            "metadata": {
-
-                "threads": {
-
-                    "thread":
-                        thread_posts
-                }
-            }
-        }
-    }
-
-    data = buffer_graphql(
-        access_token,
-        mutation,
-        variables
+    return create_buffer_post(
+        token,
+        channel_id,
+        thread_posts[0]["text"],
+        {"threads": {"thread": thread_posts}},
     )
-
-    result = data.get(
-        "createPost",
-        {}
-    )
-
-    if result.get("message"):
-
-        raise RuntimeError(
-            "Buffer rejected Threads thread: "
-            + result["message"]
-        )
-
-    post = result.get(
-        "post"
-    )
-
-    if not post or not post.get("id"):
-
-        raise RuntimeError(
-            "Buffer did not return Threads "
-            "thread ID: "
-            + json.dumps(data)
-        )
-
-    print(
-        "Threads Buffer thread ID:",
-        post["id"]
-    )
-
-    return post
 
 
 # ==================================================
 # WAIT FOR PUBLICATION
-# NO LONG POLLING
 # ==================================================
 
 def wait_until_published(
-    post_id,
-    access_token,
-    platform_name,
-    timeout_seconds=60
+    post_id, access_token, platform_name, timeout_seconds=900
 ):
+    query = """
+    query GetPost($id: PostId!) {
+      post(input: { id: $id }) {
+        id
+        status
+        sentAt
+      }
+    }
+    """
 
-    print(
-        f"{platform_name} post created successfully."
-    )
+    deadline = time.time() + timeout_seconds
 
-    print(
-        f"Buffer post ID: {post_id}"
-    )
-
-    print(
-        "Buffer will handle publication."
-    )
-
-    return True
-
-
-# ==================================================
-# CLEANUP
-# ==================================================
-
-def delete_temporary_image(
-    delete_url
-):
-
-    if not delete_url:
-
-        print(
-            "No deletion URL returned; "
-            "relying on host expiry."
+    while time.time() < deadline:
+        data = buffer_graphql(
+            access_token, query, {"id": post_id}
         )
+        post = data.get("post")
 
-        return
+        if post:
+            status = str(post.get("status", "")).lower()
+            print(f"{platform_name} status: {status}")
 
-    response = requests.get(
-        delete_url,
-        timeout=30,
-        allow_redirects=True,
-    )
+            if status == "sent" or post.get("sentAt"):
+                return True
+            if status in ("error", "failed"):
+                return False
 
-    response.raise_for_status()
+        time.sleep(20)
 
-    print(
-        "Temporary image cleanup completed."
-    )
+    return False
 
 
 # ==================================================
@@ -1506,286 +721,74 @@ def delete_temporary_image(
 # ==================================================
 
 def main():
+    print("==================================")
+    print("Starting Mauksh Daily Mulank Horoscope")
+    print(TODAY.strftime("%d %B %Y"))
+    print("==================================")
 
-    print(
-        "=================================="
-    )
+    horoscopes = generate_horoscopes()
+    image_path = create_poster(horoscopes)
 
-    print(
-        "Starting Mauksh Daily Mulank Horoscope"
-    )
-
-    print(
-        TODAY.strftime(
-            "%d %B %Y"
-        )
-    )
-
-    print(
-        "=================================="
-    )
-
-    # Generate once
-    horoscopes = (
-        generate_horoscopes()
-    )
-
-    # Create poster
-    image_path = (
-        create_poster(
-            horoscopes
-        )
-    )
-
-    # Preview
-    if (
-        os.getenv(
-            "PREVIEW_ONLY",
-            "false"
-        ).lower()
-        == "true"
-    ):
-
-        print(
-            "Preview mode enabled."
-        )
-
-        print(
-            "No Instagram, Facebook, X or Threads "
-            "posts will be created."
-        )
-
+    if os.getenv("PREVIEW_ONLY", "false").lower() == "true":
+        print("Preview mode enabled.")
+        print("No Instagram, Facebook, X or Threads posts will be created.")
         return
 
-    # ==================================================
-    # UPLOAD IMAGE ONCE
-    # ==================================================
+    print("\n======= IMAGE UPLOAD ========\n")
+    image_url, _delete_url = upload_to_freeimage_host(image_path)
 
-    image_url, delete_url = (
-        upload_to_picrd(
-            image_path
-        )
-    )
-
-    # ==========================================
-    # INSTAGRAM
-    # ==========================================
-
-    print(
-        "\n========== INSTAGRAM ==========\n"
-    )
-
+    print("\n========== INSTAGRAM ==========\n")
     try:
-
-        instagram_post = (
-            publish_to_instagram(
-                image_url
-            )
+        post = publish_to_instagram(image_url)
+        published = wait_until_published(
+            post["id"], os.environ["BUFFER_ACCESS_TOKEN"], "Instagram"
         )
-
-        instagram_published = (
-            wait_until_published(
-                instagram_post["id"],
-
-                os.environ[
-                    "BUFFER_ACCESS_TOKEN"
-                ],
-
-                "Instagram"
-            )
-        )
-
-        if instagram_published:
-
-            print(
-                "Instagram sent to Buffer."
-            )
-
+        print("Instagram publication confirmed." if published
+              else "Instagram publication not confirmed.")
     except Exception as exc:
+        print("Instagram failed:", type(exc).__name__, str(exc))
 
-        print(
-            "Instagram failed:",
-            type(exc).__name__,
-            str(exc)
-        )
-
-    # ==========================================
-    # FACEBOOK
-    # ==========================================
-
-    print(
-        "\n========== FACEBOOK ============\n"
-    )
-
+    print("\n========== FACEBOOK ============\n")
     try:
-
-        facebook_post = (
-            publish_to_facebook(
-                image_url
-            )
+        post = publish_to_facebook(image_url)
+        published = wait_until_published(
+            post["id"], os.environ["BUFFER_FACEBOOK_ACCESS_TOKEN"], "Facebook"
         )
-
-        facebook_published = (
-            wait_until_published(
-                facebook_post["id"],
-
-                os.environ[
-                    "BUFFER_FACEBOOK_ACCESS_TOKEN"
-                ],
-
-                "Facebook"
-            )
-        )
-
-        if facebook_published:
-
-            print(
-                "Facebook sent to Buffer."
-            )
-
+        print("Facebook publication confirmed." if published
+              else "Facebook publication not confirmed.")
     except Exception as exc:
+        print("Facebook failed:", type(exc).__name__, str(exc))
 
-        print(
-            "Facebook failed:",
-            type(exc).__name__,
-            str(exc)
-        )
-
-    # ==========================================
-    # X
-    # ==========================================
-
-    print(
-        "\n============== X ==============\n"
-    )
-
+    print("\n============== X ==============\n")
     try:
-
-        x_post = publish_to_x(
-            horoscopes
+        post = publish_to_x(horoscopes)
+        published = wait_until_published(
+            post["id"], os.environ["BUFFER_X_ACCESS_TOKEN"], "X"
         )
-
-        x_published = (
-            wait_until_published(
-                x_post["id"],
-
-                os.environ[
-                    "BUFFER_X_ACCESS_TOKEN"
-                ],
-
-                "X"
-            )
-        )
-
-        if x_published:
-
-            print(
-                "X thread sent to Buffer."
-            )
-
+        print("X thread publication confirmed." if published
+              else "X thread publication not confirmed.")
     except Exception as exc:
+        print("X failed:", type(exc).__name__, str(exc))
 
-        print(
-            "X failed:",
-            type(exc).__name__,
-            str(exc)
-        )
-
-    # ==========================================
-    # THREADS
-    # ==========================================
-
-    print(
-        "\n========== THREADS ============\n"
-    )
-
+    print("\n========== THREADS ============\n")
     try:
-
-        threads_post = (
-            publish_to_threads(
-                horoscopes
-            )
+        post = publish_to_threads(horoscopes)
+        published = wait_until_published(
+            post["id"], os.environ["BUFFER_API_KEY"], "Threads"
         )
-
-        threads_published = (
-            wait_until_published(
-                threads_post["id"],
-
-                os.environ[
-                    "BUFFER_API_KEY"
-                ],
-
-                "Threads"
-            )
-        )
-
-        if threads_published:
-
-            print(
-                "Threads thread sent to Buffer."
-            )
-
+        print("Threads publication confirmed." if published
+              else "Threads publication not confirmed.")
     except Exception as exc:
+        print("Threads failed:", type(exc).__name__, str(exc))
 
-        print(
-            "Threads failed:",
-            type(exc).__name__,
-            str(exc)
-        )
+    print("\n==================================")
+    print("Mauksh Mulank horoscope workflow finished.")
+    print("Instagram: 1 image post")
+    print("Facebook: 1 image post")
+    print("X: 9-post thread")
+    print("Threads: 9-post thread")
+    print("==================================")
 
-    # ==========================================
-    # CLEANUP
-    # ==========================================
-
-    try:
-
-        delete_temporary_image(
-            delete_url
-        )
-
-    except Exception as exc:
-
-        print(
-            "Image cleanup needs attention:",
-            type(exc).__name__
-        )
-
-    # ==========================================
-    # FINISHED
-    # ==========================================
-
-    print(
-        "\n=================================="
-    )
-
-    print(
-        "Mauksh Mulank horoscope workflow finished."
-    )
-
-    print(
-        "Instagram: 1 post"
-    )
-
-    print(
-        "Facebook: 1 post"
-    )
-
-    print(
-        "X: 9-post thread"
-    )
-
-    print(
-        "Threads: 9-post thread"
-    )
-
-    print(
-        "=================================="
-    )
-
-
-# ==================================================
-# RUN
-# ==================================================
 
 if __name__ == "__main__":
     main()
