@@ -1,521 +1,745 @@
+
+import json
 import os
+import re
 import requests
+
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from openai import OpenAI
 
 
 # ============================================================
-# MAUKSH DAILY CAREER HOROSCOPE — BUFFER
+# MAUKSH DAILY CAREER HOROSCOPE — LINKEDIN
 # ============================================================
 
+TZ = ZoneInfo("Asia/Kolkata")
+TODAY = datetime.now(TZ)
+DATE_TEXT = TODAY.strftime("%d %B %Y")
+
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
-MAUKSH_CAREER_BUFFER_TOKEN = os.environ["MAUKSH_CAREER_BUFFER_TOKEN"]
+BUFFER_TOKEN = os.environ["MAUKSH_CAREER_BUFFER_TOKEN"]
+
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+BUFFER_URL = "https://api.buffer.com"
+
+HISTORY_PATH = os.getenv(
+    "MAUKSH_CAREER_HISTORY",
+    "mauksh_linkedin_career_history.json",
+)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-BUFFER_URL = "https://api.buffer.com"
+
+# ============================================================
+# ZODIAC SIGNS
+# ============================================================
+
+SIGNS = [
+    ("ARIES", "♈"),
+    ("TAURUS", "♉"),
+    ("GEMINI", "♊"),
+    ("CANCER", "♋"),
+    ("LEO", "♌"),
+    ("VIRGO", "♍"),
+    ("LIBRA", "♎"),
+    ("SCORPIO", "♏"),
+    ("SAGITTARIUS", "♐"),
+    ("CAPRICORN", "♑"),
+    ("AQUARIUS", "♒"),
+    ("PISCES", "♓"),
+]
+
+SIGN_NAMES = [sign for sign, _ in SIGNS]
 
 
 # ============================================================
-# DATE
+# JSON RESPONSE PARSER
 # ============================================================
 
-today = datetime.now().strftime("%d %B %Y")
+def parse_json_response(raw):
+    raw = raw.strip()
+
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            "OpenAI did not return valid JSON. "
+            f"Response excerpt: {raw[:500]}"
+        ) from exc
 
 
 # ============================================================
-# GENERATE CAREER HOROSCOPE
+# CAREER HISTORY
 # ============================================================
 
-prompt = f"""
-You are the official astrology content writer for Mauksh.
+def load_recent_history():
+    if not os.path.exists(HISTORY_PATH):
+        return []
 
-Create today's Daily Career Horoscope specifically for
-Mauksh's LinkedIn Page.
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as file:
+            history = json.load(file)
 
-Date: {today}
+        if not isinstance(history, list):
+            return []
 
-Write career-focused Vedic astrology predictions for all
-12 zodiac signs.
+        return history[-30:]
 
-FORMAT EXACTLY:
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(
+            "Could not read career horoscope history. "
+            "Fix the history file before publishing."
+        ) from exc
+
+
+def save_history(post_text):
+    history = load_recent_history()
+
+    # Keep only one successful record per publication date.
+    history = [
+        item for item in history
+        if item.get("date") != DATE_TEXT
+    ]
+
+    history.append({
+        "date": DATE_TEXT,
+        "post": post_text,
+    })
+
+    history = history[-30:]
+
+    directory = os.path.dirname(
+        os.path.abspath(HISTORY_PATH)
+    )
+    os.makedirs(directory, exist_ok=True)
+
+    temporary_path = HISTORY_PATH + ".tmp"
+
+    with open(temporary_path, "w", encoding="utf-8") as file:
+        json.dump(
+            history,
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    os.replace(temporary_path, HISTORY_PATH)
+
+
+# ============================================================
+# STAGE 1 — OPENAI VEDIC TRANSIT INTERPRETATION
+# ============================================================
+
+def analyze_vedic_transits(history):
+    history_text = json.dumps(
+        history,
+        ensure_ascii=False,
+    )
+
+    prompt = f"""
+You are an experienced practitioner of traditional
+Vedic sidereal astrology.
+
+DATE: {DATE_TEXT}
+REFERENCE TIME: 12:00 PM Indian Standard Time
+ZODIAC: Sidereal
+AYANAMSHA: Lahiri
+
+Determine and interpret the planetary transit picture
+for the specified date using your own existing knowledge.
+
+Do not use external tools, Python libraries, or an ephemeris.
+
+IMPORTANT ACCURACY REQUIREMENTS:
+
+- Estimate the positions of the Sun, Moon, Mars, Mercury,
+  Jupiter, Venus, Saturn, Rahu and Ketu.
+- Do not pretend that estimates are verified astronomical data.
+- If you cannot confidently determine a planetary sign,
+  degree, nakshatra or motion, mark it uncertain.
+- Never invent a precise degree or astronomical event
+  merely to fill a field.
+- Distinguish actual planetary positions from astrological
+  interpretation.
+- Do not invent a conjunction, aspect, sign ingress or
+  retrograde station.
+- Use the standard sidereal zodiac and Lahiri framework
+  as the intended interpretive system.
+
+CAREER ANALYSIS FOR ALL 12 SIGNS:
+
+Treat each zodiac sign as the ascendant and use whole-sign
+houses.
+
+Consider the following traditional house significations:
+
+10th house: career, status, authority and professional action.
+6th house: employment, competition, service and disputes.
+11th house: gains, professional networks and ambitions.
+2nd house: income, resources and financial stability.
+
+Consider the relevant house lords, planetary placements,
+traditional aspects, conjunctions and retrograde effects
+only when you can reasonably support the interpretation.
+
+For each sign, identify:
+- Relevant career houses and their lords.
+- The strongest plausible career theme.
+- A concrete professional situation.
+- A possible development or complication.
+- The uncertainty or limitations of the interpretation.
+
+Avoid assigning stereotypical predictions to signs.
+
+HISTORICAL POSTS — AVOID REPEATING THEIR SCENARIOS:
+{history_text}
+
+Return ONLY valid JSON in this structure:
+
+{{
+  "date": "{DATE_TEXT}",
+  "reference_time": "12:00 IST",
+  "zodiac": "Sidereal",
+  "ayanamsha": "Lahiri",
+  "transits": [
+    {{
+      "planet": "Sun",
+      "sign": null,
+      "degree": null,
+      "motion": "uncertain",
+      "confidence": "estimated"
+    }}
+  ],
+  "career_analysis": [
+    {{
+      "sign": "ARIES",
+      "houses_activated": [],
+      "astrological_factors": [],
+      "career_theme": "",
+      "specific_scenario": "",
+      "possible_outcome": ""
+    }}
+  ]
+}}
+
+Include all nine grahas and exactly 12 career-analysis entries
+in this order:
+{json.dumps(SIGN_NAMES)}
+
+Use null or uncertainty labels rather than inventing facts.
+Do not include the final LinkedIn post in this response.
+"""
+
+    print("Stage 1: Asking OpenAI to interpret Vedic transits...")
+
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=prompt,
+    )
+
+    data = parse_json_response(response.output_text)
+
+    if len(data.get("transits", [])) != 9:
+        raise ValueError(
+            "Transit analysis did not return nine grahas."
+        )
+
+    analysis = data.get("career_analysis", [])
+
+    if len(analysis) != 12:
+        raise ValueError(
+            "Transit analysis did not return 12 signs."
+        )
+
+    for index, item in enumerate(analysis):
+        if str(item.get("sign", "")).upper() != SIGN_NAMES[index]:
+            raise ValueError(
+                f"Transit analysis has incorrect sign order "
+                f"at position {index + 1}."
+            )
+
+    print("Transit interpretation completed.")
+    return data
+
+
+# ============================================================
+# STAGE 2 — GENERATE LINKEDIN CAREER HOROSCOPE
+# ============================================================
+
+def generate_horoscopes(transit_data, history):
+    prompt = f"""
+You are the official Vedic astrology career prediction
+writer for Mauksh's LinkedIn Page.
+
+PUBLICATION DATE: {DATE_TEXT}
+
+Use this OpenAI-generated transit analysis:
+{json.dumps(transit_data, ensure_ascii=False, indent=2)}
+
+PREVIOUSLY PUBLISHED POSTS:
+{json.dumps(history, ensure_ascii=False, indent=2)}
+
+YOUR TASK:
+
+Write a genuinely predictive Daily Career Horoscope
+for all 12 zodiac signs.
+
+This is not a generic career advice post.
+
+Every prediction should describe a specific, plausible
+professional development informed by the supplied analysis.
+
+CAREER THEMES MAY INCLUDE:
+
+- Hiring and interview decisions
+- A manager reviewing a proposal
+- A delayed approval or payment
+- A dispute over responsibilities or credit
+- A difficult client negotiation
+- Contract revisions or deadline changes
+- A project being challenged or returned for revision
+- Competition for a role or responsibility
+- A business pricing or cash-flow decision
+- A referral from a professional contact
+- Scrutiny from senior management
+- A change in authority or reporting structure
+- An accountability issue
+- A commercial decision that needs reconsideration
+- Recognition accompanied by additional responsibility
+- A technical assessment or selection process
+
+These are examples, not a checklist.
+
+SPECIFICITY RULES:
+
+1. Give every sign a distinct central professional event.
+
+2. Include concrete circumstances, such as a client questioning
+   a deadline, a manager reviewing a proposal, or an approval
+   requiring another round of documentation.
+
+3. Explain what might happen, not merely what the reader
+   should do.
+
+4. Avoid predictions that could apply to almost any person.
+
+5. Use the supplied career analysis as the foundation.
+   Do not invent additional transits or planetary placements.
+
+6. Do not force a positive outcome for every sign.
+   Include plausible obstacles, delays, mixed outcomes
+   and constructive developments.
+
+7. Compare the underlying scenarios with the previous posts.
+   Reject recycled events even when the wording is different.
+
+8. Do not automatically assign promotions to Capricorn,
+   leadership to Aries, communication to Gemini, recognition
+   to Leo, or office politics to Scorpio.
+
+9. Do not repeatedly use vague phrases such as:
+   "New opportunities are coming."
+   "Your hard work will pay off."
+   "Recognition may come your way."
+   "Focus on your goals."
+   "Success is within reach."
+
+10. Do not invent precise employers, names, salaries,
+    guaranteed promotions or guaranteed business outcomes.
+
+11. Do not present astrological interpretations as certainty.
+    Use measured predictive language where appropriate.
+
+LINKEDIN FORMAT:
 
 Mauksh Daily Career Horoscope
-{today}
+{DATE_TEXT}
 
-♈ Aries: prediction
+♈ Aries: [prediction]
 
-♉ Taurus: prediction
+♉ Taurus: [prediction]
 
-♊ Gemini: prediction
+♊ Gemini: [prediction]
 
-♋ Cancer: prediction
+♋ Cancer: [prediction]
 
-♌ Leo: prediction
+♌ Leo: [prediction]
 
-♍ Virgo: prediction
+♍ Virgo: [prediction]
 
-♎ Libra: prediction
+♎ Libra: [prediction]
 
-♏ Scorpio: prediction
+♏ Scorpio: [prediction]
 
-♐ Sagittarius: prediction
+♐ Sagittarius: [prediction]
 
-♑ Capricorn: prediction
+♑ Capricorn: [prediction]
 
-♒ Aquarius: prediction
+♒ Aquarius: [prediction]
 
-♓ Pisces: prediction
+♓ Pisces: [prediction]
 
+WRITING STYLE:
 
-WRITING RULES:
+- English only.
+- One or two concise sentences per sign.
+- Career and professional life only.
+- No love, health, family or general lifestyle content.
+- No planetary names or explanations in the final post.
+- No hashtags, introductory paragraphs or conclusion.
+- No additional emojis beyond the zodiac symbols.
+- Avoid identical sentence structures across signs.
+- Keep the post professional and suitable for LinkedIn.
+- Do not add Markdown formatting.
 
-- Write ONLY about career and professional life.
-- Write entirely in English.
-- Make every zodiac prediction genuinely different.
-- Each prediction should be 1–2 concise sentences.
-- Base the predictions on Vedic astrology themes.
-- Make the predictions specific and meaningful.
-- Make them feel like actual horoscope predictions,
-  not generic career advice.
-- Naturally vary professional themes between signs.
+Return ONLY valid JSON in this structure:
 
-Possible themes include:
-
-promotions,
-leadership,
-job opportunities,
-interviews,
-workplace politics,
-recognition,
-new responsibilities,
-career changes,
-business decisions,
-networking,
-communication with seniors,
-colleagues,
-clients,
-projects,
-professional reputation,
-skill development,
-workplace decisions,
-career timing,
-professional visibility,
-competition,
-authority,
-and long-term career direction.
-
-IMPORTANT:
-
-- Do NOT make every sign about promotion.
-- Do NOT make every sign about changing jobs.
-- Do NOT make every sign about success.
-- Do NOT make every sign about opportunities.
-- Do NOT repeat the same theme across multiple signs.
-- Do NOT use the same sentence structure for every sign.
-- Do NOT use generic motivational language.
-- Do NOT say "stay positive".
-- Do NOT say "believe in yourself".
-- Do NOT say "good things are coming".
-- Do NOT use filler.
-- Do NOT give general life advice.
-- Do NOT discuss love or relationships.
-- Do NOT discuss health.
-- Do NOT discuss family.
-- Do NOT discuss general lifestyle.
-- Do NOT mention planetary calculations.
-- Do NOT explain the astrology.
-- Do NOT add hashtags.
-- Do NOT add a conclusion.
-- Do NOT add an introduction.
-- Do NOT use bullet points.
-- Do NOT add emojis other than the zodiac symbols already
-  shown in the required format.
-- Keep the exact title and date format.
-- Keep the post concise enough for LinkedIn.
-- Make the writing natural, human and professional.
-- Make today's predictions substantially different from
-  previous days rather than recycling the same wording.
-
-Return ONLY the finished LinkedIn post.
-"""
-
-
-# ============================================================
-# GENERATE
-# ============================================================
-
-print("Generating Mauksh Daily Career Horoscope...")
-
-response = client.responses.create(
-    model="gpt-5.6",
-    input=prompt
-)
-
-post_text = response.output_text.strip()
-
-
-print()
-print("HOROSCOPE GENERATED")
-print("------------------------------------------")
-print(post_text)
-print("------------------------------------------")
-print()
-
-
-# ============================================================
-# BUFFER HEADERS
-# ============================================================
-
-headers = {
-    "Authorization": f"Bearer {MAUKSH_CAREER_BUFFER_TOKEN}",
-    "Content-Type": "application/json"
-}
-
-
-# ============================================================
-# STEP 1 — GET BUFFER ORGANIZATION
-# ============================================================
-
-print("Getting Buffer organization...")
-
-organization_query = """
-query GetOrganizations {
-    account {
-        organizations {
-            id
-            name
-        }
-    }
-}
-"""
-
-organization_result = requests.post(
-    BUFFER_URL,
-    headers=headers,
-    json={
-        "query": organization_query
-    },
-    timeout=30
-)
-
-
-if organization_result.status_code != 200:
-
-    print()
-    print("==========================================")
-    print("BUFFER ORGANIZATION ERROR")
-    print("==========================================")
-    print("Status Code:", organization_result.status_code)
-    print("Response:", organization_result.text)
-    print("==========================================")
-
-    raise RuntimeError(
-        "Could not retrieve Buffer organization."
-    )
-
-
-organization_data = organization_result.json()
-
-
-if "errors" in organization_data:
-
-    print()
-    print("==========================================")
-    print("BUFFER ORGANIZATION GRAPHQL ERROR")
-    print("==========================================")
-    print(organization_data)
-    print("==========================================")
-
-    raise RuntimeError(
-        "Buffer organization lookup failed."
-    )
-
-
-organizations = (
-    organization_data
-    .get("data", {})
-    .get("account", {})
-    .get("organizations", [])
-)
-
-
-if not organizations:
-
-    raise RuntimeError(
-        "No Buffer organization found for this API token."
-    )
-
-
-# Use the first organization
-organization_id = organizations[0]["id"]
-
-print("Buffer Organization:")
-print(organizations[0].get("name"))
-print("Organization ID:", organization_id)
-
-
-# ============================================================
-# STEP 2 — GET CONNECTED CHANNELS
-# ============================================================
-
-print()
-print("Getting Buffer channels...")
-
-
-channels_query = f"""
-query GetChannels {{
-    channels(
-        input: {{
-            organizationId: "{organization_id}"
-        }}
-    ) {{
-        id
-        name
-        displayName
-        service
+{{
+  "horoscopes": [
+    {{
+      "sign": "ARIES",
+      "text": "A specific career prediction."
     }}
+  ]
 }}
+
+Include exactly 12 signs in the required order.
 """
 
+    print("Stage 2: Generating 12 career predictions...")
 
-channels_result = requests.post(
-    BUFFER_URL,
-    headers=headers,
-    json={
-        "query": channels_query
-    },
-    timeout=30
-)
-
-
-if channels_result.status_code != 200:
-
-    print()
-    print("==========================================")
-    print("BUFFER CHANNEL ERROR")
-    print("==========================================")
-    print("Status Code:", channels_result.status_code)
-    print("Response:", channels_result.text)
-    print("==========================================")
-
-    raise RuntimeError(
-        "Could not retrieve Buffer channels."
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=prompt,
     )
 
+    data = parse_json_response(response.output_text)
+    horoscopes = data.get("horoscopes", [])
 
-channels_data = channels_result.json()
+    if not isinstance(horoscopes, list) or len(horoscopes) != 12:
+        raise ValueError(
+            "OpenAI did not return exactly 12 horoscopes."
+        )
 
+    for index, item in enumerate(horoscopes):
+        expected_sign = SIGN_NAMES[index]
 
-if "errors" in channels_data:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid horoscope entry.")
 
-    print()
-    print("==========================================")
-    print("BUFFER CHANNEL GRAPHQL ERROR")
-    print("==========================================")
-    print(channels_data)
-    print("==========================================")
+        if str(item.get("sign", "")).upper() != expected_sign:
+            raise ValueError(
+                f"Expected {expected_sign} at position "
+                f"{index + 1}."
+            )
 
-    raise RuntimeError(
-        "Buffer channel lookup failed."
-    )
+        text = str(item.get("text", "")).strip()
 
+        if not text:
+            raise ValueError(
+                f"{expected_sign} has an empty prediction."
+            )
 
-channels = (
-    channels_data
-    .get("data", {})
-    .get("channels", [])
-)
+        if not text.endswith((".", "!", "?")):
+            raise ValueError(
+                f"{expected_sign} prediction is incomplete."
+            )
 
+        item["sign"] = expected_sign
+        item["text"] = text
 
-if not channels:
+    post_text = format_linkedin_post(horoscopes)
 
-    raise RuntimeError(
-        "No Buffer channels found."
-    )
+    print("Generated and validated all 12 predictions.")
+    print("\n" + "=" * 60)
+    print(post_text)
+    print("=" * 60)
+
+    return post_text
 
 
 # ============================================================
-# ONE CHANNEL
+# FORMAT LINKEDIN POST
 # ============================================================
 
-if len(channels) > 1:
+def format_linkedin_post(horoscopes):
+    lines = [
+        "Mauksh Daily Career Horoscope",
+        DATE_TEXT,
+        "",
+    ]
 
-    print()
-    print("WARNING:")
-    print(
-        f"Buffer returned {len(channels)} channels."
+    symbols = dict(SIGNS)
+
+    for item in horoscopes:
+        sign = item["sign"]
+        symbol = symbols[sign]
+
+        lines.append(
+            f"{symbol} {sign.title()}: {item['text']}"
+        )
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+# ============================================================
+# BUFFER GRAPHQL HELPER
+# ============================================================
+
+def buffer_graphql(query, variables=None):
+    response = requests.post(
+        BUFFER_URL,
+        headers={
+            "Authorization": f"Bearer {BUFFER_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "query": query,
+            "variables": variables or {},
+        },
+        timeout=60,
     )
-    print("Using the first channel.")
 
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Buffer HTTP error {response.status_code}: "
+            f"{response.text[:1000]}"
+        )
 
-channel = channels[0]
+    try:
+        result = response.json()
+    except ValueError as exc:
+        raise RuntimeError(
+            "Buffer returned an invalid JSON response."
+        ) from exc
 
-channel_id = channel["id"]
+    if result.get("errors"):
+        raise RuntimeError(
+            "Buffer GraphQL error: "
+            + json.dumps(result["errors"], ensure_ascii=False)
+        )
 
-print()
-print("Buffer Channel:")
-print("Name:", channel.get("name"))
-print("Display Name:", channel.get("displayName"))
-print("Service:", channel.get("service"))
-print("Channel ID:", channel_id)
+    return result.get("data", {})
 
 
 # ============================================================
-# STEP 3 — CREATE BUFFER POST
+# FIND LINKEDIN CHANNEL
 # ============================================================
 
-print()
-print("Publishing to Buffer...")
-
-
-create_post_query = """
-mutation CreatePost($input: CreatePostInput!) {
-
-    createPost(input: $input) {
-
-        ... on PostActionSuccess {
-            post {
+def get_linkedin_channel_id():
+    organizations_query = """
+    query GetOrganizations {
+        account {
+            organizations {
                 id
-                text
-                dueAt
+                name
             }
         }
+    }
+    """
 
-        ... on MutationError {
-            message
+    data = buffer_graphql(organizations_query)
+
+    organizations = (
+        data.get("account", {}).get("organizations", [])
+    )
+
+    if not organizations:
+        raise RuntimeError(
+            "No Buffer organizations found."
+        )
+
+    matching_channels = []
+
+    channels_query = """
+    query GetChannels($organizationId: OrganizationId!) {
+        channels(input: { organizationId: $organizationId }) {
+            id
+            name
+            displayName
+            service
         }
     }
-}
-"""
+    """
+
+    for organization in organizations:
+        channel_data = buffer_graphql(
+            channels_query,
+            {"organizationId": organization["id"]},
+        )
+
+        for channel in channel_data.get("channels", []):
+            service = str(
+                channel.get("service", "")
+            ).lower()
+
+            if service in ("linkedin", "linked_in"):
+                matching_channels.append({
+                    **channel,
+                    "organization": organization.get("name"),
+                })
+
+    # Optional explicit channel selection for accounts with
+    # multiple LinkedIn profiles or Pages.
+    requested_channel_id = os.getenv(
+        "BUFFER_LINKEDIN_CHANNEL_ID"
+    )
+
+    if requested_channel_id:
+        matches = [
+            channel for channel in matching_channels
+            if channel["id"] == requested_channel_id
+        ]
+
+        if len(matches) != 1:
+            raise RuntimeError(
+                "BUFFER_LINKEDIN_CHANNEL_ID does not match "
+                "a discovered LinkedIn channel."
+            )
+
+        selected = matches[0]
+
+    else:
+        if len(matching_channels) != 1:
+            details = [
+                {
+                    "id": c["id"],
+                    "name": c.get("name"),
+                    "displayName": c.get("displayName"),
+                    "organization": c.get("organization"),
+                }
+                for c in matching_channels
+            ]
+
+            raise RuntimeError(
+                "Expected exactly one LinkedIn channel. "
+                f"Found {len(matching_channels)}: "
+                f"{json.dumps(details, ensure_ascii=False)}. "
+                "Set BUFFER_LINKEDIN_CHANNEL_ID to select "
+                "the intended LinkedIn Page."
+            )
+
+        selected = matching_channels[0]
+
+    print(
+        "LinkedIn channel:",
+        selected.get("displayName")
+        or selected.get("name"),
+    )
+
+    print("Channel ID:", selected["id"])
+
+    return selected["id"]
 
 
-variables = {
-    "input": {
-        "text": post_text,
-        "channelId": channel_id,
-        "schedulingType": "automatic",
-        "mode": "shareNow"
-    
+# ============================================================
+# CREATE LINKEDIN POST
+# ============================================================
+
+def publish_to_linkedin(post_text):
+    channel_id = get_linkedin_channel_id()
+
+    mutation = """
+    mutation CreatePost($input: CreatePostInput!) {
+        createPost(input: $input) {
+            ... on PostActionSuccess {
+                post {
+                    id
+                    text
+                    dueAt
+                }
+            }
+            ... on MutationError {
+                message
+            }
+        }
     }
-}
+    """
 
+    variables = {
+        "input": {
+            "text": post_text,
+            "channelId": channel_id,
+            "schedulingType": "automatic",
+            "mode": "shareNow",
+        }
+    }
 
-create_post_result = requests.post(
-    BUFFER_URL,
-    headers=headers,
-    json={
-        "query": create_post_query,
-        "variables": variables
-    },
-    timeout=30
-)
+    print("Submitting career horoscope to Buffer...")
+
+    data = buffer_graphql(mutation, variables)
+    result = data.get("createPost", {})
+
+    if result.get("message"):
+        raise RuntimeError(
+            "Buffer could not create the post: "
+            + result["message"]
+        )
+
+    post = result.get("post")
+
+    if not post or not post.get("id"):
+        raise RuntimeError(
+            "Buffer did not return a post ID: "
+            + json.dumps(data, ensure_ascii=False)
+        )
+
+    print("\n" + "=" * 60)
+    print("BUFFER POST CREATED")
+    print("=" * 60)
+    print("Post ID:", post["id"])
+    print("Due At:", post.get("dueAt"))
+    print("\nPOST TEXT:\n")
+    print(post_text)
+    print("=" * 60)
+
+    return post
 
 
 # ============================================================
-# HTTP ERROR
+# MAIN
 # ============================================================
 
-if create_post_result.status_code != 200:
+def main():
+    print("=" * 60)
+    print("MAUKSH DAILY CAREER HOROSCOPE — LINKEDIN")
+    print("Date:", DATE_TEXT)
+    print("Model:", OPENAI_MODEL)
+    print("=" * 60)
 
-    print()
-    print("==========================================")
-    print("BUFFER POST HTTP ERROR")
-    print("==========================================")
-    print("Status Code:", create_post_result.status_code)
-    print("Response:", create_post_result.text)
-    print("==========================================")
+    # Read history before generation.
+    history = load_recent_history()
 
-    raise RuntimeError(
-        f"Buffer posting failed with HTTP "
-        f"{create_post_result.status_code}"
+    # Ask OpenAI to estimate and interpret Vedic transits.
+    transit_data = analyze_vedic_transits(history)
+
+    # Generate the actual LinkedIn post.
+    post_text = generate_horoscopes(
+        transit_data,
+        history,
     )
 
+    # Preview mode never publishes.
+    if os.getenv("PREVIEW_ONLY", "false").lower() == "true":
+        print("\nPREVIEW ONLY: Nothing was sent to Buffer.")
+        return
 
-buffer_data = create_post_result.json()
+    # Publish the post.
+    post = publish_to_linkedin(post_text)
 
+    # Save only after Buffer confirms creation of a post ID.
+    save_history(post_text)
 
-# ============================================================
-# GRAPHQL ERROR
-# ============================================================
-
-if "errors" in buffer_data:
-
-    print()
-    print("==========================================")
-    print("BUFFER GRAPHQL ERROR")
-    print("==========================================")
-    print(buffer_data)
-    print("==========================================")
-
-    raise RuntimeError(
-        "Buffer posting failed."
-    )
+    print("\nWorkflow finished.")
+    print("Buffer Post ID:", post["id"])
+    print("Career horoscope submitted successfully.")
 
 
-# ============================================================
-# RESPONSE
-# ============================================================
-
-create_post_data = (
-    buffer_data
-    .get("data", {})
-    .get("createPost")
-)
-
-
-if not create_post_data:
-
-    raise RuntimeError(
-        f"Unexpected Buffer response: {buffer_data}"
-    )
-
-
-# ============================================================
-# BUFFER MUTATION ERROR
-# ============================================================
-
-if "message" in create_post_data:
-
-    print()
-    print("==========================================")
-    print("BUFFER POST ERROR")
-    print("==========================================")
-    print(create_post_data["message"])
-    print("==========================================")
-
-    raise RuntimeError(
-        create_post_data["message"]
-    )
-
-
-# ============================================================
-# SUCCESS
-# ============================================================
-
-post = create_post_data.get("post")
-
-
-if not post:
-
-    raise RuntimeError(
-        f"Buffer did not return a post: {buffer_data}"
-    )
-
-
-print()
-print("==========================================")
-print("SUCCESS")
-print("==========================================")
-print("Mauksh Daily Career Horoscope was")
-print("successfully added to Buffer.")
-print()
-
-print("Buffer Post ID:", post.get("id"))
-print("Buffer Due At:", post.get("dueAt"))
-
-print()
-print("POST:")
-print("------------------------------------------")
-print(post_text)
-print("------------------------------------------")
+if __name__ == "__main__":
+    main()
