@@ -4,16 +4,22 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
   contents: write
+
+concurrency:
+  group: mauksh-linkedin-career-horoscope
+  cancel-in-progress: false
 
 jobs:
   generate-and-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,9 +36,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MAUKSH_CAREER_BUFFER_TOKEN: ${{ secrets.MAUKSH_CAREER_BUFFER_TOKEN }}
           GH_HISTORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
           OPENAI_MODEL: gpt-5-mini
-
           PREVIEW_ONLY: "false"
+
         run: |
           python scripts/linkedin_horoscope.py
