@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  contents: write
 
 jobs:
   generate-and-post:
@@ -17,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
@@ -28,5 +29,10 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MAUKSH_CAREER_BUFFER_TOKEN: ${{ secrets.MAUKSH_CAREER_BUFFER_TOKEN }}
+          GH_HISTORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          OPENAI_MODEL: gpt-5-mini
+
+          PREVIEW_ONLY: "true"
         run: |
           python scripts/linkedin_horoscope.py
