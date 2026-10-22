@@ -33,6 +33,6 @@ jobs:
 
           OPENAI_MODEL: gpt-5-mini
 
-          PREVIEW_ONLY: "true"
+          PREVIEW_ONLY: "false"
         run: |
           python scripts/linkedin_horoscope.py
