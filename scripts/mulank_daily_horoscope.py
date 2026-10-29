@@ -563,7 +563,7 @@ def publish_to_facebook(image_url):
     channel_id = get_facebook_channel_id()
 
     caption = (
-        f"Mauksh Daily Numerology for {TODAY.strftime('%d %B %Y')}\n\n"
+        f"Daily Numerology Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
         "Find your Mulank from your birth date and read today's guidance.\n\n"
         "Save this post for later.\n\n"
         "#Mauksh #Mulank #Numerology #DailyNumerology"
@@ -591,7 +591,7 @@ def create_thread_items(horoscopes, platform):
 
         if index == 0:
             post_text = (
-                f"Mauksh Daily Numerology\n\n"
+                f"Daily Numerology Horoscope\n\n"
                 f"{TODAY.strftime('%d %B %Y')}\n\n"
                 f"Mulank {mulank}\n\n"
                 f"Born on {birth_dates}\n\n"
