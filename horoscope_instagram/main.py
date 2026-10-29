@@ -617,7 +617,7 @@ def publish_to_instagram(image_url):
     channel_id = get_instagram_channel_id()
 
     caption = (
-        f"Mauksh Daily Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
+        f"Daily Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
         "Read your sign and take what feels useful. "
         "Save this post for your day.\n\n"
         "#Mauksh #DailyHoroscope #ZodiacSigns #SelfGrowth"
@@ -646,7 +646,7 @@ def publish_to_facebook(image_url):
     channel_id = get_facebook_channel_id()
 
     caption = (
-        f"Mauksh Daily Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
+        f"Daily Horoscope for {TODAY.strftime('%d %B %Y')}\n\n"
         "Read your sign and take what feels useful. "
         "Save this post for your day.\n\n"
         "#Mauksh #DailyHoroscope #ZodiacSigns #SelfGrowth"
@@ -690,7 +690,7 @@ def create_thread_items(horoscopes, platform):
 
         if index == 0:
             post_text = (
-                f"Mauksh Daily Horoscope — "
+                f"Daily Horoscope for "
                 f"{TODAY.strftime('%d %B %Y')}\n\n"
                 f"{symbol} {sign.title()}\n\n"
                 f"{item['text']}"
