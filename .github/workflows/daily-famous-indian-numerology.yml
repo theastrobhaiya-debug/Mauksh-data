@@ -1,20 +1,20 @@
 
-name: Mauksh Birthday Numerology
+name: Mauksh Daily Famous Numerology
 
 on:
   schedule:
-    # 8:00 AM Indian Standard Time = 2:30 AM UTC
+    # 8:00 AM IST
     - cron: "30 2 * * *"
 
   workflow_dispatch:
     inputs:
       preview:
-        description: "Preview only, do not publish"
+        description: "Preview without publishing"
         type: boolean
         default: false
 
       force:
-        description: "Bypass publishing history"
+        description: "Force republishing"
         type: boolean
         default: false
 
@@ -22,11 +22,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: mauksh-birthday-numerology
+  group: daily-famous-numerology
   cancel-in-progress: false
 
 jobs:
-  birthday-numerology:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,10 +40,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install requirements
         run: |
-          python -m pip install --upgrade pip
-          pip install openai requests
+          pip install -r requirements.txt
 
       - name: Run Birthday Numerology
         env:
@@ -62,9 +61,9 @@ jobs:
             ARGS="$ARGS --force"
           fi
 
-          python birthday_numerology.py $ARGS
+          python scripts/daily_famous_numerology.py $ARGS
 
-      - name: Save publishing history
+      - name: Save history to GitHub
         if: always()
         run: |
           git config user.name "github-actions[bot]"
@@ -73,7 +72,7 @@ jobs:
           git add data/famous_numerology/
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update birthday numerology history"
+            git commit -m "Update daily famous numerology history"
             git push
           else
             echo "No history changes."
