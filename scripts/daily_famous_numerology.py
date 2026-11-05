@@ -1,124 +1,205 @@
 
+
 import os
+
 import json
+
 import re
-import argparse
+
 import hashlib
+
 from pathlib import Path
+
 from datetime import datetime
+
 from zoneinfo import ZoneInfo
 
 import requests
+
 from openai import OpenAI
 
-# ============================================================
-# MAUKSH BIRTHDAY NUMEROLOGY — EDITORIAL EDITION
-# ============================================================
+# =========================================================
+
+# MAUKSH — DAILY FAMOUS PERSONALITY NUMEROLOGY
+
+# Editorial Edition
+
+# =========================================================
 
 TZ = ZoneInfo("Asia/Kolkata")
+
 TODAY = datetime.now(TZ).date()
+
 FORECAST_YEAR = TODAY.year + 1
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-6-astra")
+
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 
 BUFFER_TOKEN = (
-    os.getenv("BUFFER_X_ACCESS_TOKEN")
-    or os.getenv("BUFFER_ACCESS_TOKEN")
-)
 
-BUFFER_API = "https://api.buffer.com"
+    os.getenv("BUFFER_X_ACCESS_TOKEN")
+
+    or os.getenv("BUFFER_ACCESS_TOKEN")
+
+)
 
 BUFFER_X_CHANNEL_NAME = os.getenv("BUFFER_X_CHANNEL_NAME", "")
 
+BUFFER_API = "https://api.buffer.com"
+
 HISTORY_DIR = Path("data/famous_numerology")
+
 HISTORY_FILE = HISTORY_DIR / f"{TODAY.isoformat()}.json"
 
 MAX_PEOPLE = 4
-MAX_TWEET_LENGTH = 275
-MAX_THREAD_POSTS = 3
 
-# ============================================================
-# INITIALIZATION
-# ============================================================
+MAX_POSTS = 3
+
+MAX_CHARS = 275
+
+SUCCESS_STATUSES = {
+
+    "submitted_to_buffer",
+
+    "published",
+
+    "sent",
+
+    "scheduled"
+
+}
 
 if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is missing")
+
+    raise RuntimeError("OPENAI_API_KEY missing")
 
 if not BUFFER_TOKEN:
-    raise RuntimeError(
-        "BUFFER_X_ACCESS_TOKEN or BUFFER_ACCESS_TOKEN is missing"
-    )
+
+    raise RuntimeError("BUFFER_X_ACCESS_TOKEN missing")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ============================================================
-# HISTORY MANAGEMENT
-# ============================================================
+# =========================================================
+
+# HISTORY
+
+# =========================================================
 
 def load_history():
+
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
     if not HISTORY_FILE.exists():
+
         return {
+
             "date": TODAY.isoformat(),
+
             "people": {}
+
         }
 
     try:
+
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+
             data = json.load(f)
 
         if "people" not in data:
+
             data["people"] = {}
 
         return data
 
-    except (json.JSONDecodeError, OSError):
-        print("WARNING: History file unreadable. Starting fresh.")
-        return {
-            "date": TODAY.isoformat(),
-            "people": {}
-        }
+    except Exception as e:
 
+        raise RuntimeError(f"Cannot read history: {e}")
 
 def save_history(history):
+
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 
-    temp_file = HISTORY_FILE.with_suffix(".tmp")
+    temp = HISTORY_FILE.with_suffix(".tmp")
 
-    with open(temp_file, "w", encoding="utf-8") as f:
+    with open(temp, "w", encoding="utf-8") as f:
+
         json.dump(history, f, indent=2, ensure_ascii=False)
 
-    temp_file.replace(HISTORY_FILE)
-
+    temp.replace(HISTORY_FILE)
 
 def person_key(person):
+
     raw = (
+
         person["name"].strip().lower()
+
         + "|"
+
         + person["dob"]
+
     )
 
-    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+    return hashlib.sha256(
 
+        raw.encode("utf-8")
 
-# ============================================================
+    ).hexdigest()[:16]
+
+# =========================================================
+
+# OPENAI JSON EXTRACTION
+
+# =========================================================
+
+def extract_json(output):
+
+    output = output.strip()
+
+    output = re.sub(
+
+        r"^```(?:json)?\s*|\s*```$",
+
+        "",
+
+        output,
+
+        flags=re.IGNORECASE
+
+    )
+
+    return json.loads(output)
+
+# =========================================================
+
 # BUFFER GRAPHQL
-# ============================================================
+
+# =========================================================
 
 def buffer_request(query, variables=None):
+
     response = requests.post(
+
         BUFFER_API,
+
         headers={
+
             "Authorization": f"Bearer {BUFFER_TOKEN}",
+
             "Content-Type": "application/json"
+
         },
+
         json={
+
             "query": query,
+
             "variables": variables or {}
+
         },
-        timeout=40
+
+        timeout=45
+
     )
 
     response.raise_for_status()
@@ -126,586 +207,744 @@ def buffer_request(query, variables=None):
     result = response.json()
 
     if result.get("errors"):
+
         raise RuntimeError(
-            "Buffer GraphQL error: "
-            + json.dumps(result["errors"])
+
+            json.dumps(result["errors"], ensure_ascii=False)
+
         )
 
     return result.get("data", {})
 
+def get_x_channel():
 
-def get_buffer_x_channel():
+    organization_query = """
 
-    organizations_query = """
     query {
+
         account {
+
             organizations {
+
                 id
+
                 name
+
             }
+
         }
+
     }
+
     """
 
-    data = buffer_request(organizations_query)
+    data = buffer_request(organization_query)
 
     organizations = (
+
         data.get("account", {}).get("organizations", [])
+
     )
 
     if not organizations:
+
         raise RuntimeError("No Buffer organization found")
 
-    all_channels = []
+    channel_query = """
 
-    channels_query = """
     query GetChannels($organizationId: OrganizationId!) {
+
         channels(input: {organizationId: $organizationId}) {
+
             id
+
             name
+
             displayName
+
             service
-            isQueuePaused
+
             isLocked
+
         }
+
     }
+
     """
+
+    channels = []
 
     for organization in organizations:
 
         result = buffer_request(
-            channels_query,
+
+            channel_query,
+
             {"organizationId": organization["id"]}
+
         )
 
-        all_channels.extend(
-            result.get("channels", [])
-        )
+        channels.extend(result.get("channels", []))
 
     x_channels = [
-        channel for channel in all_channels
-        if channel.get("service", "").lower() == "twitter"
-        and not channel.get("isLocked", False)
+
+        c for c in channels
+
+        if (c.get("service") or "").lower() in (
+
+            "twitter", "x"
+
+        )
+
+        and not c.get("isLocked", False)
+
     ]
 
     if BUFFER_X_CHANNEL_NAME:
+
         matching = [
-            channel for channel in x_channels
+
+            c for c in x_channels
+
             if BUFFER_X_CHANNEL_NAME.lower()
+
             in (
-                channel.get("name", "")
+
+                (c.get("name") or "")
+
                 + " "
-                + channel.get("displayName", "")
+
+                + (c.get("displayName") or "")
+
             ).lower()
+
         ]
 
-        if matching:
-            x_channels = matching
+        x_channels = matching
 
     if not x_channels:
-        raise RuntimeError("No available X channel found in Buffer")
+
+        raise RuntimeError("No matching X channel found in Buffer")
 
     if len(x_channels) > 1:
+
         raise RuntimeError(
-            "Multiple X channels found. Set BUFFER_X_CHANNEL_NAME "
-            "to select the correct channel."
+
+            "Multiple X channels found. Set BUFFER_X_CHANNEL_NAME."
+
         )
 
     channel = x_channels[0]
 
-    if channel.get("isQueuePaused"):
-        raise RuntimeError(
-            "Your Buffer X queue is paused. Unpause it before publishing."
-        )
-
     print(
-        f"Using Buffer X channel: "
-        f"{channel.get('name') or channel.get('displayName')}"
+
+        "Buffer channel:",
+
+        channel.get("displayName") or channel.get("name")
+
     )
 
     return channel["id"]
 
+# =========================================================
 
-# ============================================================
-# RESEARCH: FAMOUS INDIAN PERSONALITIES
-# ============================================================
+# BIRTHDAY RESEARCH
+
+# =========================================================
 
 def research_birthdays():
 
     prompt = f"""
-You are a professional research assistant for Mauksh.
+
+You are a professional research assistant for MAUKSH.
+
+Find up to {MAX_PEOPLE} famous Indian personalities
+
+whose birthday is today.
 
 TODAY: {TODAY.strftime("%d %B %Y")}
-COUNTRY: India
 
-Find up to {MAX_PEOPLE} famous Indian personalities whose
-birthday is TODAY.
+STRICT REQUIREMENTS:
 
-STRICT RULES:
+1. Only living people.
 
-1. Include only people who are alive as of today.
-2. Include only Indian personalities.
-3. They must be genuinely famous and publicly recognised.
-4. Verify their exact date of birth.
-5. DOB must match today's day and month.
-6. Use at least TWO independent HTTPS sources per person.
-7. Prefer authoritative biographies, reputable newspapers,
-   official profiles and established publications.
-8. Never guess a birth date.
-9. Do not include fictional characters.
-10. Do not include someone whose current living status
-    cannot be reasonably verified.
-11. Do not invent career achievements.
-12. If no suitable person can be verified, return an empty list.
+2. Only Indian personalities.
 
-Return ONLY valid JSON in this structure:
+3. Must be genuinely famous and publicly recognised.
+
+4. Exact date of birth must be verified.
+
+5. Birthday must match today's day and month.
+
+6. Use at least TWO independent reliable sources.
+
+7. Prefer official biographies and established publications.
+
+8. Do not guess dates of birth.
+
+9. Do not include deceased personalities.
+
+10. Do not invent achievements.
+
+11. Exclude people whose living status cannot be verified.
+
+12. Return an empty list if no suitable people are found.
+
+Include a variety of fields where possible:
+
+sports, business, entertainment, literature and public life.
+
+Return ONLY JSON:
 
 {{
+
   "people": [
+
     {{
+
       "name": "Full name",
+
       "dob": "YYYY-MM-DD",
+
       "profession": "Profession",
-      "known_for": "Brief description",
+
+      "known_for": "Short description",
+
       "career_milestones": [
-        "Verified milestone 1",
-        "Verified milestone 2"
+
+        "Verified achievement",
+
+        "Verified achievement"
+
       ],
+
       "sources": [
+
         {{
+
           "title": "Source title",
+
           "url": "https://..."
+
         }},
+
         {{
+
           "title": "Source title",
+
           "url": "https://..."
+
         }}
+
       ],
+
       "alive_verified": true
+
     }}
+
   ]
+
 }}
 
-Return no commentary outside JSON.
 """
 
     response = client.responses.create(
+
         model=OPENAI_MODEL,
+
         tools=[{"type": "web_search"}],
+
         input=prompt
+
     )
 
-    output = response.output_text.strip()
-
-    output = re.sub(
-        r"^```(?:json)?\s*|\s*```$",
-        "",
-        output,
-        flags=re.IGNORECASE
-    )
-
-    try:
-        result = json.loads(output)
-    except json.JSONDecodeError:
-        raise RuntimeError(
-            "Birthday research did not return valid JSON:\n"
-            + output[:2000]
-        )
-
-    people = result.get("people", [])
+    result = extract_json(response.output_text)
 
     verified = []
 
-    for person in people:
+    seen = set()
+
+    for person in result.get("people", []):
 
         try:
+
             dob = datetime.strptime(
+
                 person["dob"], "%Y-%m-%d"
+
             ).date()
+
         except (ValueError, KeyError, TypeError):
+
             continue
 
-        if dob.month != TODAY.month or dob.day != TODAY.day:
+        if (dob.day, dob.month) != (TODAY.day, TODAY.month):
+
+            continue
+
+        if dob > TODAY:
+
             continue
 
         if person.get("alive_verified") is not True:
+
             continue
 
         sources = person.get("sources", [])
 
         valid_sources = [
-            source for source in sources
-            if isinstance(source, dict)
-            and source.get("url", "").startswith("https://")
-            and source.get("title")
+
+            s for s in sources
+
+            if isinstance(s, dict)
+
+            and s.get("title")
+
+            and s.get("url", "").startswith("https://")
+
         ]
 
         if len(valid_sources) < 2:
+
             continue
 
         if not person.get("career_milestones"):
+
             continue
 
-        if not person.get("name"):
+        name = person.get("name", "").strip()
+
+        if not name or name.lower() in seen:
+
             continue
+
+        seen.add(name.lower())
 
         person["sources"] = valid_sources[:3]
+
         verified.append(person)
 
-    # Remove duplicate names
-    unique = {}
+    return verified[:MAX_PEOPLE]
 
-    for person in verified:
-        unique[person["name"].strip().lower()] = person
+# =========================================================
 
-    return list(unique.values())[:MAX_PEOPLE]
+# NUMEROLOGY
 
-
-# ============================================================
-# NUMEROLOGY CALCULATIONS
-# ============================================================
+# =========================================================
 
 def reduce_number(number):
+
     while number > 9:
-        number = sum(int(digit) for digit in str(number))
+
+        number = sum(int(x) for x in str(number))
 
     return number
 
-
 def calculate_mulank(dob):
+
     return reduce_number(dob.day)
 
-
 def calculate_bhagyank(dob):
-    total = sum(int(digit) for digit in dob.strftime("%Y%m%d"))
 
-    reduced = reduce_number(total)
+    total = sum(
+
+        int(x) for x in dob.strftime("%d%m%Y")
+
+    )
 
     return {
-        "compound": total,
-        "reduced": reduced
-    }
 
+        "compound": total,
+
+        "reduced": reduce_number(total)
+
+    }
 
 def calculate_personal_year(dob, year):
 
     total = (
-        sum(int(digit) for digit in str(dob.day))
-        + sum(int(digit) for digit in str(dob.month))
-        + sum(int(digit) for digit in str(year))
+
+        sum(int(x) for x in str(dob.day))
+
+        + sum(int(x) for x in str(dob.month))
+
+        + sum(int(x) for x in str(year))
+
     )
 
     return reduce_number(total)
 
-
-def numerology_data(person):
+def get_numbers(person):
 
     dob = datetime.strptime(
+
         person["dob"], "%Y-%m-%d"
+
     ).date()
 
-    mulank = calculate_mulank(dob)
     bhagyank = calculate_bhagyank(dob)
 
-    personal_year = calculate_personal_year(
-        dob,
-        FORECAST_YEAR
-    )
-
     return {
-        "dob": dob.isoformat(),
-        "mulank": mulank,
+
+        "mulank": calculate_mulank(dob),
+
         "bhagyank_compound": bhagyank["compound"],
+
         "bhagyank_reduced": bhagyank["reduced"],
-        "personal_year": personal_year,
+
+        "personal_year": calculate_personal_year(
+
+            dob, FORECAST_YEAR
+
+        ),
+
         "forecast_year": FORECAST_YEAR
+
     }
 
+# =========================================================
 
-# ============================================================
 # EDITORIAL THREAD GENERATION
-# ============================================================
+
+# =========================================================
 
 def generate_thread(person):
 
-    numbers = numerology_data(person)
+    numbers = get_numbers(person)
 
     prompt = f"""
-You are the senior editorial writer for MAUKSH.
 
-Create a premium, intelligent, minimal X birthday numerology thread.
+You are the senior editorial writer of MAUKSH.
 
-SUBJECT:
+Create an intelligent, premium, minimal birthday
+
+numerology thread for X.
+
+PERSON:
+
 {json.dumps(person, ensure_ascii=False)}
 
-NUMEROLOGY:
+CALCULATED NUMBERS:
+
 {json.dumps(numbers)}
 
 TODAY:
+
 {TODAY.strftime("%d %B %Y")}
 
-FORECAST YEAR:
-{FORECAST_YEAR}
+EXACTLY THREE POSTS.
 
-CREATE EXACTLY THREE POSTS.
+POST 1 — BIRTHDAY AND MULANK
 
-POST 1 — BIRTHDAY + MULANK
-
-Must begin exactly:
+Start exactly with:
 
 Happy Birthday, {person['name']}!
 
-Then explain their Mulank and its traditional numerological
-association.
+Explain their Mulank and its traditional association.
 
-Keep it personal, readable and interesting.
+Make the opening interesting and personal.
 
-POST 2 — BHAGYANK + LIFE JOURNEY
+POST 2 — BHAGYANK AND LIFE JOURNEY
 
-Explain the Bhagyank, including its compound number
-when relevant.
+Explain their Bhagyank and compound number.
 
-Connect the traditional interpretation to one or two
-REAL, documented milestones from the person's life.
+Connect its traditional numerological interpretation
 
-Do not claim that numerology caused their success.
+to one or two actual career milestones.
+
+Do not claim numerology caused their achievements.
 
 POST 3 — UPCOMING PERSONAL YEAR
 
-Explain their Personal Year {FORECAST_YEAR}.
+Explain their personal year for {FORECAST_YEAR}.
 
-Describe the traditional numerological themes of that number.
+Describe the traditional themes associated with the number.
 
-Give a thoughtful, balanced interpretation.
+Offer a thoughtful interpretation without guaranteed predictions.
 
-Do not make guaranteed predictions about their future.
+WRITING STYLE:
 
-EDITORIAL STYLE:
+- Editorial magazine style.
 
-- Magazine-quality writing.
-- Minimal and sophisticated.
+- Short, elegant paragraphs.
+
 - Natural English.
-- Short, clean sentences.
+
+- Minimal and sophisticated.
+
 - No emojis.
+
 - No hashtags.
-- No decorative Unicode characters.
+
+- No decorative characters.
+
 - No unnecessary headings.
-- No repetitive introductions.
-- No exaggerated spiritual claims.
+
+- No repetitive disclaimers.
+
 - No generic AI phrases.
+
 - No clickbait.
-- No forced connections between numbers and achievements.
-- No repeated disclaimers.
-- No claims of scientific validity.
-- Use the actual verified career milestones provided.
+
+- No exaggerated claims.
+
+- No forced connections.
+
+- No fabricated facts.
+
+- Do not repeat the birthday greeting.
+
+- No source URLs in posts.
+
+- Maximum {MAX_CHARS} characters per post.
+
 - Explain numerology as a traditional interpretive system.
-- Every post must be independently readable.
-- Maximum {MAX_TWEET_LENGTH} characters per post.
-- Exactly three posts.
-- Do not include source URLs inside the posts.
 
-IMPORTANT:
+- Each post should provide a distinct piece of information.
 
-Use only the supplied numerological calculations.
-Do not recalculate or change the numbers.
+Do not change the supplied calculations.
 
 Return ONLY JSON:
 
 {{
+
   "posts": [
-    "First post",
-    "Second post",
-    "Third post"
+
+    "Post one",
+
+    "Post two",
+
+    "Post three"
+
   ]
+
 }}
+
 """
 
     response = client.responses.create(
+
         model=OPENAI_MODEL,
+
         input=prompt
+
     )
 
-    output = response.output_text.strip()
-
-    output = re.sub(
-        r"^```(?:json)?\s*|\s*```$",
-        "",
-        output,
-        flags=re.IGNORECASE
-    )
-
-    try:
-        result = json.loads(output)
-    except json.JSONDecodeError:
-        raise RuntimeError(
-            f"Invalid thread JSON for {person['name']}:\n"
-            + output[:1500]
-        )
+    result = extract_json(response.output_text)
 
     posts = result.get("posts", [])
 
-    if len(posts) != MAX_THREAD_POSTS:
-        raise RuntimeError(
-            f"Expected exactly 3 posts for {person['name']}"
-        )
+    if len(posts) != MAX_POSTS:
 
-    cleaned = []
+        raise ValueError("Thread must contain exactly 3 posts")
 
     for index, post in enumerate(posts):
 
         post = post.strip()
 
         if not post:
-            raise RuntimeError("Empty thread post")
 
-        if len(post) > MAX_TWEET_LENGTH:
-            raise RuntimeError(
-                f"Post {index + 1} for {person['name']} "
-                f"is too long: {len(post)} characters"
+            raise ValueError("Empty post generated")
+
+        if len(post) > MAX_CHARS:
+
+            raise ValueError(
+
+                f"Post {index + 1} exceeds {MAX_CHARS} characters"
+
             )
 
         if index == 0 and not post.startswith(
-            f"Happy Birthday, {person['name']}!"
-        ):
-            raise RuntimeError(
-                "First post does not start with the required birthday greeting"
-            )
 
-        cleaned.append(post)
+            f"Happy Birthday, {person['name']}!"
+
+        ):
+
+            raise ValueError("Birthday greeting missing")
+
+        posts[index] = post
 
     return {
-        "posts": cleaned,
+
+        "posts": posts,
+
         "numbers": numbers
+
     }
 
+# =========================================================
 
-# ============================================================
-# BUFFER THREAD PUBLISHING
-# ============================================================
+# PUBLISH THREAD THROUGH BUFFER
+
+# =========================================================
 
 def publish_thread(channel_id, posts):
 
     mutation = """
+
     mutation CreateBirthdayThread($input: CreatePostInput!) {
+
         createPost(input: $input) {
+
             ... on PostActionSuccess {
+
                 post {
+
                     id
+
                     status
+
                     text
+
                 }
+
             }
+
             ... on MutationError {
+
                 message
+
             }
+
         }
+
     }
+
     """
 
     variables = {
+
         "input": {
+
             "text": posts[0],
+
             "channelId": channel_id,
+
             "schedulingType": "automatic",
-            "mode": "addToQueue",
+
+            "mode": "shareNow",
+
             "metadata": {
+
                 "twitter": {
+
                     "thread": [
-                        {"text": post}
-                        for post in posts
+
+                        {"text": p} for p in posts
+
                     ]
+
                 }
+
             }
+
         }
+
     }
 
-    result = buffer_request(
-        mutation,
-        variables
-    )
+    data = buffer_request(mutation, variables)
 
-    action = result.get("createPost", {})
+    action = data.get("createPost", {})
 
     post = action.get("post")
 
     if not post or not post.get("id"):
+
         raise RuntimeError(
-            "Buffer did not confirm thread creation: "
+
+            "Buffer did not confirm publishing: "
+
             + json.dumps(action)
+
         )
 
     return post
 
+# =========================================================
 
-# ============================================================
-# MAIN AUTOMATION
-# ============================================================
+# MAIN
+
+# =========================================================
 
 def main():
 
-    parser = argparse.ArgumentParser(
-        description="Mauksh Birthday Numerology"
-    )
+    import argparse
 
-    parser.add_argument(
-        "--preview",
-        action="store_true",
-        help="Generate threads without publishing"
-    )
+    parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Bypass previous publishing history"
-    )
+    parser.add_argument("--preview", action="store_true")
+
+    parser.add_argument("--force", action="store_true")
 
     args = parser.parse_args()
 
     print("=" * 55)
+
     print("MAUKSH BIRTHDAY NUMEROLOGY")
+
     print("EDITORIAL EDITION")
+
     print("=" * 55)
 
     print("Date:", TODAY)
-    print("Forecast year:", FORECAST_YEAR)
+
+    print("Forecast:", FORECAST_YEAR)
+
     print("Model:", OPENAI_MODEL)
-    print("Preview:", args.preview)
 
     history = load_history()
 
-    print("\nSearching for verified birthdays...")
+    print("\nResearching today's birthdays...")
 
     people = research_birthdays()
 
     if not people:
-        print("No verified living Indian birthdays found today.")
+
+        print("No verified birthdays found.")
 
         history["last_run_status"] = "no_verified_people"
+
         save_history(history)
 
         return
 
-    print(f"\nFound {len(people)} eligible personalities.")
+    print("Found:", len(people))
 
     channel_id = None
 
     for person in people:
 
         name = person["name"]
+
         key = person_key(person)
 
-        existing = history["people"].get(key, {})
+        previous = history["people"].get(key, {})
 
-        if (
-            existing.get("status") == "submitted_to_buffer"
-            and not args.force
-        ):
-            print(f"\nSkipping already published: {name}")
+        previous_status = previous.get("status")
+
+        if previous_status == "publishing" and not args.force:
+
+            print(
+
+                f"SKIPPING {name}: Previous publishing attempt "
+
+                "has an uncertain outcome. Check Buffer manually."
+
+            )
+
+            continue
+
+        if previous_status in SUCCESS_STATUSES and not args.force:
+
+            print(f"Already processed: {name}")
+
             continue
 
         print("\n" + "-" * 50)
-        print("PERSON:", name)
-        print("DOB:", person["dob"])
+
+        print(name)
+
+        print(person["dob"])
 
         try:
 
@@ -713,92 +952,130 @@ def main():
 
             posts = generated["posts"]
 
-            print("\nNUMEROLOGY:")
+            print("\nNUMEROLOGY")
+
             print(json.dumps(
+
                 generated["numbers"],
+
                 indent=2
+
             ))
 
-            print("\nGENERATED THREAD:")
+            for i, post in enumerate(posts, 1):
 
-            for index, post in enumerate(posts, 1):
-                print(f"\nPOST {index} ({len(post)} chars)")
+                print(f"\nPOST {i} ({len(post)} characters)")
+
                 print(post)
 
             if args.preview:
-                print("\nPREVIEW ONLY. Not publishing.")
 
                 history["people"][key] = {
+
                     "name": name,
+
                     "dob": person["dob"],
+
                     "status": "preview_generated",
+
                     "posts": posts,
+
                     "numbers": generated["numbers"],
+
                     "sources": person["sources"]
+
                 }
 
                 save_history(history)
+
+                print("\nPREVIEW ONLY")
+
                 continue
 
             if channel_id is None:
-                channel_id = get_buffer_x_channel()
 
-            # Save a pending state before sending.
-            # This makes interrupted runs visible for manual checking.
+                channel_id = get_x_channel()
+
+            # Save pending state before API submission.
+
             history["people"][key] = {
+
                 "name": name,
+
                 "dob": person["dob"],
+
                 "status": "publishing",
+
                 "posts": posts,
+
                 "numbers": generated["numbers"],
+
                 "sources": person["sources"]
+
             }
 
             save_history(history)
 
             result = publish_thread(
+
                 channel_id,
+
                 posts
+
             )
 
             history["people"][key] = {
+
                 "name": name,
+
                 "dob": person["dob"],
+
                 "status": "submitted_to_buffer",
+
                 "buffer_post_id": result["id"],
+
                 "buffer_status": result.get("status"),
+
                 "posts": posts,
+
                 "numbers": generated["numbers"],
+
                 "sources": person["sources"]
+
             }
 
             save_history(history)
 
-            print("\nSUCCESS: Thread submitted to Buffer.")
-            print("Buffer post ID:", result["id"])
+            print("\nSUCCESS:", name)
 
-        except Exception as error:
+            print("Buffer ID:", result["id"])
 
-            print(f"\nERROR for {name}: {error}")
+        except Exception as e:
+
+            print("\nERROR:", name, str(e))
 
             history["people"][key] = {
+
                 "name": name,
+
                 "dob": person["dob"],
+
                 "status": "failed",
-                "error": str(error)
+
+                "error": str(e)
+
             }
 
             save_history(history)
 
     history["last_run_status"] = "completed"
+
     history["last_run_at"] = datetime.now(TZ).isoformat()
 
     save_history(history)
 
-    print("\n" + "=" * 55)
-    print("MAUKSH AUTOMATION FINISHED")
-    print("=" * 55)
-
+    print("\nMAUKSH AUTOMATION COMPLETE")
 
 if __name__ == "__main__":
+
     main()
