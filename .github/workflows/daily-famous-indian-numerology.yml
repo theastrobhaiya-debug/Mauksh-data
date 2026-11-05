@@ -1,49 +1,80 @@
-name: Daily Famous Indian Numerology
+
+name: Mauksh Birthday Numerology
 
 on:
   schedule:
+    # 8:00 AM Indian Standard Time = 2:30 AM UTC
     - cron: "30 2 * * *"
+
   workflow_dispatch:
+    inputs:
+      preview:
+        description: "Preview only, do not publish"
+        type: boolean
+        default: false
+
+      force:
+        description: "Bypass publishing history"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: daily-famous-indian-numerology
+  group: mauksh-birthday-numerology
   cancel-in-progress: false
 
 jobs:
-  publish:
+  birthday-numerology:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install openai requests
 
-      - name: Publish birthday numerology thread
+      - name: Run Birthday Numerology
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           BUFFER_X_ACCESS_TOKEN: ${{ secrets.BUFFER_X_ACCESS_TOKEN }}
           BUFFER_X_CHANNEL_NAME: ${{ vars.BUFFER_X_CHANNEL_NAME }}
-        run: python scripts/daily_famous_numerology.py
+        run: |
+          ARGS=""
 
-      - name: Save publication history
+          if [ "${{ inputs.preview }}" = "true" ]; then
+            ARGS="$ARGS --preview"
+          fi
+
+          if [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+
+          python birthday_numerology.py $ARGS
+
+      - name: Save publishing history
         if: always()
         run: |
-          if [[ -n "$(git status --porcelain data/famous_numerology)" ]]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data/famous_numerology
-            git commit -m "Record daily famous numerology run"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/famous_numerology/
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Update birthday numerology history"
             git push
+          else
+            echo "No history changes."
           fi
