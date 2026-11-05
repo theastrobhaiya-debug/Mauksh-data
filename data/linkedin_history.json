@@ -493,5 +493,95 @@
         "node_type": "mean"
       }
     ]
+  },
+  {
+    "date": "05 November 2026",
+    "post_id": "6aebceb9ff03f6944a154856",
+    "post": "Mauksh Daily Career Horoscope\n05 November 2026\n\n♈ Aries: A client partner asks you to lead contract renegotiation, sending repeated redlines; payments may be held until partner sign‑off, requiring liaison coordination.\n\n♉ Taurus: Procurement flags a vendor non‑conformance and asks you to run acceptance tests; you may need to rewrite SLAs and coordinate sign‑offs before payments.\n\n♊ Gemini: A client questions the scope of a prototype demo and requests immediate revisions; you might have to defend fees and submit an itemised proposal before payment.\n\n♋ Cancer: Leadership may ask you to act as interim regional lead for a sensitive account, requiring daily status reports and negotiation of short‑term compensation.\n\n♌ Leo: Communications invites you to record a short panel appearance; legal may demand multiple clearance rounds, so payment or credit could be delayed.\n\n♍ Virgo: A retained client asks for a revised rate card and itemised invoices; you may need to supply backups and face back‑and‑forth before funds release.\n\n♎ Libra: Your organisation may list you as lead contact for a joint campaign, then legal asks for indemnities and limits, causing credit and payment negotiations.\n\n♏ Scorpio: You're asked to finalise a confidential vendor settlement under NDA; successful handling might lead to a private recommendation or later oversight role.\n\n♐ Sagittarius: An industry contact offers a co‑led funded pilot requiring a two‑slide plan and escrowed funds; terms may need tightening before fees are released.\n\n♑ Capricorn: Executives ask you to present cross‑product compliance results with audit‑ready slides; expect repeated edit requests and conditional approval before recognition or bonus.\n\n♒ Aquarius: A partner requests you draft IP assignment or licensing terms for market entry, insisting on legal clearances and milestone payments before any advance is released.\n\n♓ Pisces: A collaborator sends a revised revenue‑share draft asking you to finalise acceptance criteria; you might need to secure staged invoicing to protect cashflow.",
+    "transits": [
+      {
+        "planet": "Sun",
+        "sign": "Libra",
+        "degree": 18.6187,
+        "longitude": 198.618727,
+        "daily_speed": 1.002474,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Moon",
+        "sign": "Virgo",
+        "degree": 1.3251,
+        "longitude": 151.325105,
+        "daily_speed": 13.12758,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mars",
+        "sign": "Cancer",
+        "degree": 26.5078,
+        "longitude": 116.507839,
+        "daily_speed": 0.489111,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mercury",
+        "sign": "Libra",
+        "degree": 17.0749,
+        "longitude": 197.074887,
+        "daily_speed": -1.289499,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Jupiter",
+        "sign": "Leo",
+        "degree": 0.5864,
+        "longitude": 120.58638,
+        "daily_speed": 0.111298,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Venus",
+        "sign": "Libra",
+        "degree": 0.1864,
+        "longitude": 180.18645,
+        "daily_speed": -0.352607,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Saturn",
+        "sign": "Pisces",
+        "degree": 14.7936,
+        "longitude": 344.793569,
+        "daily_speed": -0.058012,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Rahu",
+        "sign": "Aquarius",
+        "degree": 1.613,
+        "longitude": 301.613023,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated",
+        "node_type": "mean"
+      },
+      {
+        "planet": "Ketu",
+        "sign": "Leo",
+        "degree": 1.613,
+        "longitude": 121.613023,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "calculated_opposite_of_rahu",
+        "node_type": "mean"
+      }
+    ]
   }
 ]
