@@ -38,8 +38,8 @@ if not OPENAI_API_KEY:
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
-    timeout=90.0,
-    max_retries=1
+    timeout=240.0,
+    max_retries=2
 )
 
 
@@ -159,7 +159,18 @@ def ask_openai(prompt, use_web_search=False):
             }
         }
 
+    log(
+        "Waiting for OpenAI. "
+        + (
+            "Live birthday research is running..."
+            if use_web_search
+            else "Generating content..."
+        )
+    )
+
     response = client.responses.create(**params)
+
+    log("OpenAI response received.")
 
     return response.output_text
 
@@ -394,7 +405,7 @@ Keep sentences short.
 Avoid unnecessary introductions.
 Avoid repeating the same phrases.
 Do not make every post sound like a definition.
-No headings inside the posts.
+Do not use headings inside the posts.
 No emojis, hashtags or decorative symbols.
 No marketing language.
 Do not mention The Astro Bhaiya.
@@ -644,9 +655,7 @@ def get_buffer_channel():
     )
 
     if channel.get("isQueuePaused"):
-        log(
-            "Warning: Buffer reports that the channel queue is paused."
-        )
+        log("Warning: Buffer reports that the channel queue is paused.")
 
     return channel["id"]
 
