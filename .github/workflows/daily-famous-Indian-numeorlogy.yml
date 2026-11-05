@@ -62,7 +62,7 @@ jobs:
             ARGS="$ARGS --force"
           fi
 
-          python scripts/daily_famous_numerology.py $ARGS
+          python -u scripts/daily_famous_numerology.py $ARGS
 
       - name: Save daily history
         if: always()
