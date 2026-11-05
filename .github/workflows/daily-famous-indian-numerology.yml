@@ -3,7 +3,6 @@ name: Mauksh Daily Famous Numerology
 
 on:
   schedule:
-    # 8:00 AM IST
     - cron: "30 2 * * *"
 
   workflow_dispatch:
@@ -11,7 +10,7 @@ on:
       preview:
         description: "Preview without publishing"
         type: boolean
-        default: false
+        default: true
 
       force:
         description: "Force republishing"
@@ -42,7 +41,13 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install openai requests
+
+      - name: Verify Python script
+        run: |
+          test -f scripts/daily_famous_numerology.py
+          python -m py_compile scripts/daily_famous_numerology.py
 
       - name: Run Birthday Numerology
         env:
@@ -69,7 +74,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/famous_numerology/
+          if [ -d "data/famous_numerology" ]; then
+            git add -A -- data/famous_numerology/
+          else
+            echo "History directory does not exist. Nothing to save."
+          fi
 
           if ! git diff --cached --quiet; then
             git commit -m "Update daily famous numerology history"
