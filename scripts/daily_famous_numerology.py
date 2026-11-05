@@ -3,8 +3,8 @@ import os
 import sys
 import json
 import re
-import argparse
 import logging
+import argparse
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 # =========================================================
-# MAUKSH DAILY FAMOUS BIRTHDAYS & NUMEROLOGY
+# CONFIGURATION
 # =========================================================
 
 TZ = ZoneInfo("Asia/Kolkata")
@@ -23,7 +23,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL") or "gpt-6-astra"
 
 BUFFER_TOKEN = os.getenv("BUFFER_X_ACCESS_TOKEN")
-BUFFER_X_CHANNEL_NAME = os.getenv("BUFFER_X_CHANNEL_NAME", "").strip()
+BUFFER_X_CHANNEL_NAME = os.getenv(
+    "BUFFER_X_CHANNEL_NAME", ""
+).strip()
 
 OPENAI_URL = "https://api.openai.com/v1/responses"
 BUFFER_URL = "https://api.buffer.com"
@@ -31,10 +33,14 @@ BUFFER_URL = "https://api.buffer.com"
 MAX_PEOPLE = int(os.getenv("MAX_PEOPLE", "4"))
 MAX_CHARS = 275
 MAX_THREAD_POSTS = 20
+
 TIMEOUT = 180
 
 STATE_DIR = Path("data/famous_numerology")
 STATE_FILE = STATE_DIR / f"{TODAY.isoformat()}.json"
+
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,10 +72,88 @@ def require_environment(dry_run=False):
 
 
 # =========================================================
-# NUMEROLOGY CALCULATIONS
+# STATE MANAGEMENT
+# =========================================================
+
+def load_state():
+
+    if not STATE_FILE.exists():
+        return {}
+
+    try:
+        return json.loads(
+            STATE_FILE.read_text(encoding="utf-8")
+        )
+
+    except (json.JSONDecodeError, OSError):
+        log.warning("State file unreadable.")
+        return {}
+
+
+def save_state(record):
+
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    STATE_FILE.write_text(
+        json.dumps(
+            record,
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+
+def check_duplicate(force=False):
+
+    state = load_state()
+
+    if not state:
+        return
+
+    status = state.get("status")
+
+    successful = {
+        "submitted_to_buffer",
+        "published",
+        "sent",
+        "scheduled"
+    }
+
+    if status in successful:
+
+        log.info(
+            "Today's thread already submitted. "
+            "Skipping duplicate publication."
+        )
+        sys.exit(0)
+
+    if status == "publishing":
+
+        if not force:
+            raise RuntimeError(
+                "Previous publishing request may have reached "
+                "Buffer. Check Buffer before retrying. "
+                "Use --force only after verifying no thread exists."
+            )
+
+        log.warning(
+            "Force enabled for an uncertain publishing attempt."
+        )
+        return
+
+    log.info(
+        "Previous status was '%s'. Retrying.",
+        status or "unknown"
+    )
+
+
+# =========================================================
+# NUMEROLOGY
 # =========================================================
 
 def digit_sum(number):
+
     return sum(int(x) for x in str(number))
 
 
@@ -93,12 +177,8 @@ def calculate_numbers(dob):
     month = dob.month
     year = dob.year
 
-    # MULANK
-    # Original birth day retained separately.
     mulank = reduce_number(day)
 
-    # BHAGYANK
-    # Sum every digit of the full Gregorian DOB.
     full_dob = f"{day:02d}{month:02d}{year:04d}"
 
     bhagyank_compound = sum(
@@ -110,8 +190,6 @@ def calculate_numbers(dob):
         preserve_master=True
     )
 
-    # PERSONAL YEAR
-    # Day digits + month digits + forecast year's digits.
     personal_year_compound = (
         digit_sum(day)
         + digit_sum(month)
@@ -119,8 +197,7 @@ def calculate_numbers(dob):
     )
 
     personal_year = reduce_number(
-        personal_year_compound,
-        preserve_master=False
+        personal_year_compound
     )
 
     return {
@@ -135,7 +212,7 @@ def calculate_numbers(dob):
 
 
 # =========================================================
-# OPENAI RESPONSE HELPERS
+# OPENAI HELPERS
 # =========================================================
 
 def extract_output_text(data):
@@ -146,9 +223,6 @@ def extract_output_text(data):
     chunks = []
 
     for item in data.get("output", []):
-
-        if item.get("type") != "message":
-            continue
 
         for content in item.get("content", []):
 
@@ -176,7 +250,6 @@ def parse_json(text):
 
     except json.JSONDecodeError:
 
-        # Recover a JSON object if surrounding text exists.
         start = text.find("{")
         end = text.rfind("}")
 
@@ -194,6 +267,7 @@ def openai_request(prompt, use_search=False):
     }
 
     if use_search:
+
         payload["tools"] = [
             {
                 "type": "web_search",
@@ -212,25 +286,24 @@ def openai_request(prompt, use_search=False):
     )
 
     if not response.ok:
+
         raise RuntimeError(
             f"OpenAI HTTP {response.status_code}: "
-            f"{response.text[:2500]}"
+            f"{response.text[:2000]}"
         )
 
     data = response.json()
 
-    text = extract_output_text(data)
+    output = extract_output_text(data)
 
-    if not text:
-        raise RuntimeError(
-            "OpenAI returned no readable output."
-        )
+    if not output:
+        raise RuntimeError("OpenAI returned empty output.")
 
-    return parse_json(text)
+    return parse_json(output)
 
 
 # =========================================================
-# STEP 1: RESEARCH BIRTHDAY PERSONALITIES
+# RESEARCH BIRTHDAYS
 # =========================================================
 
 def research_birthdays():
@@ -240,45 +313,39 @@ You are the research editor for Mauksh's daily
 famous birthday numerology publication.
 
 TODAY: {TODAY.isoformat()}
-INDIAN TIMEZONE: Asia/Kolkata
+TIMEZONE: Asia/Kolkata
 
 Find up to {MAX_PEOPLE} famous INDIAN personalities
-whose Gregorian date of birth is:
+whose Gregorian birthday is {TODAY.strftime("%d %B")}.
 
-{TODAY.strftime("%d %B")}.
+STRICT RULES:
 
-STRICT REQUIREMENTS:
-
-1. Include only people who are alive today.
-2. Verify exact day, month and year of birth.
-3. Require TWO distinct reliable source URLs.
+1. Include only people alive today.
+2. Verify exact Gregorian birth date.
+3. Require at least TWO distinct reliable source URLs.
 4. Prefer official biographies, reputable newspapers,
    sports organisations and institutional websites.
-5. Never guess a birthday.
-6. Never include deceased personalities.
-7. Do not include fictional characters.
-8. Do not invent career milestones.
-9. Include people who are genuinely well-known.
-10. Prioritise sports, cinema, music and public life.
-11. Include a mix of Indian and internationally
-    recognised Indian personalities where appropriate.
-12. Do not fill the list with obscure names.
-13. Return fewer people if fewer meet the standards.
-14. Return an empty list if no one can be verified.
+5. Never guess dates.
+6. Never include deceased people.
+7. No fictional personalities.
+8. No invented career milestones.
+9. Prioritise famous Indian sportspeople, actors,
+   musicians and public figures.
+10. Return fewer people if necessary.
+11. Do not fill the list with obscure names.
+12. Return an empty list if none can be verified.
 
-For each person research:
+Research:
+- Full name
+- Date of birth
+- Profession
+- Country
+- Living status
+- Career milestones
+- Publicly documented turning points
+- Reliable sources
 
-- Full name.
-- Exact date of birth.
-- Profession.
-- Country.
-- Evidence of living status.
-- Important career achievements.
-- Documented career turning points.
-- Major publicly documented life events.
-- Two or more distinct credible sources.
-
-Return only valid JSON:
+Return ONLY valid JSON:
 
 {{
   "date": "{TODAY.isoformat()}",
@@ -295,20 +362,17 @@ Return only valid JSON:
         "https://source-two.example"
       ],
       "documented_milestones": [
-        "Verified career milestone",
-        "Verified life event"
+        "Verified milestone",
+        "Verified turning point"
       ]
     }}
   ]
 }}
 
-Do not generate numerology posts in this step.
+Do not write social posts yet.
 """
 
-    log.info(
-        "Researching living famous personalities born on %s",
-        TODAY.strftime("%d %B")
-    )
+    log.info("Researching birthdays for today.")
 
     return openai_request(
         prompt,
@@ -317,23 +381,23 @@ Do not generate numerology posts in this step.
 
 
 # =========================================================
-# STEP 2: VALIDATE RESEARCH
+# VALIDATE RESEARCH
 # =========================================================
 
 def validate_people(result):
 
     if result.get("date") != TODAY.isoformat():
-        raise ValueError("Research date does not match today.")
+        raise ValueError("Research date mismatch.")
 
-    people = result.get("people", [])
+    candidates = result.get("people", [])
 
-    if not isinstance(people, list):
+    if not isinstance(candidates, list):
         raise ValueError("Invalid people list.")
 
     valid = []
     seen = set()
 
-    for person in people:
+    for person in candidates:
 
         if not isinstance(person, dict):
             continue
@@ -350,6 +414,7 @@ def validate_people(result):
             continue
 
         try:
+
             dob = datetime.strptime(
                 person["dob"], "%Y-%m-%d"
             ).date()
@@ -357,11 +422,9 @@ def validate_people(result):
         except (KeyError, ValueError, TypeError):
             continue
 
-        # Birthday must match today's Indian calendar date.
         if (dob.day, dob.month) != (TODAY.day, TODAY.month):
             continue
 
-        # Exclude impossible/future birth dates.
         if dob >= TODAY:
             continue
 
@@ -382,14 +445,16 @@ def validate_people(result):
         ):
             continue
 
-        milestones = person.get("documented_milestones", [])
+        milestones = person.get(
+            "documented_milestones", []
+        )
 
         if not isinstance(milestones, list) or not milestones:
             continue
 
         person["name"] = name
-        person["sources"] = sources
         person["dob"] = dob.isoformat()
+        person["sources"] = sources
         person["calculated_numbers"] = calculate_numbers(dob)
 
         valid.append(person)
@@ -399,50 +464,34 @@ def validate_people(result):
 
 
 # =========================================================
-# STEP 3: BUILD MAIN BIRTHDAY ROLL CALL
+# MAIN BIRTHDAY ROLL CALL
 # =========================================================
 
 def build_main_post(people):
 
-    names = [person["name"] for person in people]
-
-    names_text = ", ".join(names)
+    names = ", ".join(
+        person["name"] for person in people
+    )
 
     post = (
-        f"Happy Birthday to {names_text}! "
+        f"Happy Birthday to {names}! "
         f"Today we explore the numerology behind "
         f"their life journeys, achievements and "
         f"upcoming personal years. 🧵"
     )
 
-    if len(post) <= MAX_CHARS:
-        return post, people
+    if len(post) > MAX_CHARS:
 
-    # All names must fit in the main post.
-    # Reduce the candidate count rather than omit names.
-    while len(people) > 1:
-
-        people = people[:-1]
-        names_text = ", ".join(
-            person["name"] for person in people
+        raise ValueError(
+            "All birthday names cannot fit in one post. "
+            "Reduce MAX_PEOPLE or use shorter verified names."
         )
 
-        post = (
-            f"Happy Birthday to {names_text}! "
-            f"Explore the numbers behind their "
-            f"life journeys and achievements. 🧵"
-        )
-
-        if len(post) <= MAX_CHARS:
-            return post, people
-
-    raise ValueError(
-        "Birthday names cannot fit in one X post."
-    )
+    return post
 
 
 # =========================================================
-# STEP 4: GENERATE INDIVIDUAL ANALYSIS
+# GENERATE INDIVIDUAL POSTS
 # =========================================================
 
 def generate_individual_posts(people):
@@ -456,110 +505,71 @@ def generate_individual_posts(people):
             "dob": person["dob"],
             "profession": person["profession"],
             "country": person["country"],
-            "mulank": person["calculated_numbers"]["mulank"],
-            "original_compound": person["calculated_numbers"]["original_compound"],
-            "bhagyank": person["calculated_numbers"]["bhagyank"],
-            "bhagyank_compound": person["calculated_numbers"]["bhagyank_compound"],
-            "personal_year": person["calculated_numbers"]["personal_year"],
-            "personal_year_compound": person["calculated_numbers"]["personal_year_compound"],
-            "forecast_year": FORECAST_YEAR,
-            "documented_milestones": person["documented_milestones"],
+            "numbers": person["calculated_numbers"],
+            "milestones": person["documented_milestones"],
             "sources": person["sources"]
         })
 
     prompt = f"""
 You are Mauksh's numerology research writer.
 
-Write exactly THREE analytical X posts for EVERY
-person in the research data.
+Write EXACTLY THREE X posts per person.
 
-TODAY: {TODAY.isoformat()}
-
+DATE: {TODAY.isoformat()}
 FORECAST YEAR: {FORECAST_YEAR}
 
 VERIFIED DATA:
 {json.dumps(research_data, ensure_ascii=False)}
 
-All numerology calculations are already completed.
-Use the supplied values exactly. Do not recalculate them.
+Use supplied numerology values exactly.
 
-====================================================
-POST 1: MULANK AND ORIGINAL COMPOUND
-====================================================
+POST 1: MULANK
 
-Must begin exactly:
-
+Must begin:
 Happy Birthday, [Full Name]!
 
 Include:
-- Mulank.
-- Original compound birth-day number.
-- Traditional meaning of the number.
-- A thoughtful interpretation of the tension,
-  strength or challenge represented by the number.
+- Mulank
+- Original compound birth-day number
+- Traditional symbolism
+- Specific and thoughtful interpretation
 
-Make the analysis individual and meaningful.
-Avoid generic personality descriptions.
-
-====================================================
-POST 2: BHAGYANK AND LIFE JOURNEY
-====================================================
+POST 2: BHAGYANK
 
 Include:
-- Bhagyank.
-- Original Bhagyank compound total.
-- Traditional numerological symbolism.
-- Connect the symbolism with at least one
-  documented career milestone or life event.
-- Explain the parallel critically.
+- Bhagyank
+- Compound total
+- Symbolic interpretation
+- Connect with a documented career milestone.
+- State clearly that numerology did not establish
+  or cause the achievement.
 
-Clearly state:
-"This is a numerological interpretation, not
-evidence that numerology caused the achievement."
-
-Never invent a milestone.
-
-====================================================
 POST 3: PERSONAL YEAR
-====================================================
 
 Include:
-- Personal Year for {FORECAST_YEAR}.
-- Its compound calculation total.
-- Symbolic themes.
-- Possible opportunities.
-- Possible cautions.
-- Relate themes cautiously to the documented
-  public career stage.
+- Personal Year for {FORECAST_YEAR}
+- Compound calculation total
+- Themes, possible opportunities and cautions.
+- Relate carefully to public career stage.
+- No guaranteed predictions.
+- Brief disclaimer that numerology is interpretive.
+- Include one supplied reliable source URL.
 
-No guaranteed predictions.
-End with a brief disclaimer that numerology
-is interpretive.
+EDITORIAL RULES:
 
-Include ONE relevant verified source URL from
-the supplied source list.
-
-====================================================
-EDITORIAL RULES
-====================================================
-
-- Every post maximum {MAX_CHARS} characters.
-- Exactly three posts per person.
+- Maximum {MAX_CHARS} characters per post.
+- Natural analytical English.
 - No hashtags.
-- No promotional signature.
+- No marketing.
 - No Astro Bhaiya branding.
-- No exaggerated claims.
-- No fake quotes.
-- No invented facts.
-- No scientific claims for numerology.
-- Natural, analytical English.
-- Vary the writing between personalities.
-- Avoid repetitive generic praise.
-- Keep facts and interpretations distinct.
-- Do not omit any person.
-- Do not change supplied numerical values.
+- No exaggerated predictions.
+- No invented milestones.
+- No generic repetitive praise.
+- Distinguish facts from interpretation.
+- Exactly three posts per person.
+- Do not omit anyone.
 
-Return ONLY valid JSON:
+Return ONLY JSON:
 
 {{
   "people": [
@@ -567,7 +577,7 @@ Return ONLY valid JSON:
       "name": "Full name",
       "posts": [
         "Mulank analysis",
-        "Bhagyank and life journey analysis",
+        "Bhagyank analysis",
         "Personal Year analysis with source URL"
       ]
     }}
@@ -575,7 +585,7 @@ Return ONLY valid JSON:
 }}
 """
 
-    log.info("Generating individual numerology analysis.")
+    log.info("Generating numerology analyses.")
 
     return openai_request(
         prompt,
@@ -584,7 +594,7 @@ Return ONLY valid JSON:
 
 
 # =========================================================
-# STEP 5: VALIDATE POSTS
+# VALIDATE GENERATED POSTS
 # =========================================================
 
 def validate_posts(people, generated):
@@ -592,7 +602,7 @@ def validate_posts(people, generated):
     generated_people = generated.get("people", [])
 
     if not isinstance(generated_people, list):
-        raise ValueError("Invalid generated people list.")
+        raise ValueError("Invalid generated people.")
 
     generated_map = {}
 
@@ -601,9 +611,7 @@ def validate_posts(people, generated):
         name = str(person.get("name", "")).strip().lower()
 
         if name in generated_map:
-            raise ValueError(
-                f"Duplicate generated person: {name}"
-            )
+            raise ValueError("Duplicate generated personality.")
 
         generated_map[name] = person
 
@@ -612,12 +620,11 @@ def validate_posts(people, generated):
     for person in people:
 
         name = person["name"]
+
         generated_person = generated_map.get(name.lower())
 
         if not generated_person:
-            raise ValueError(
-                f"Missing analysis for {name}"
-            )
+            raise ValueError(f"Missing analysis for {name}.")
 
         posts = generated_person.get("posts")
 
@@ -632,54 +639,40 @@ def validate_posts(people, generated):
             f"Happy Birthday, {name}!"
         ):
             raise ValueError(
-                f"Incorrect birthday opening for {name}"
+                f"Incorrect birthday opening: {name}"
             )
 
         numbers = person["calculated_numbers"]
 
-        # Verify the generated content includes the
-        # numerological values supplied by our code.
-        if str(numbers["mulank"]) not in posts[0]:
-            raise ValueError(f"Mulank missing for {name}")
+        required_values = [
+            (numbers["mulank"], posts[0], "Mulank"),
+            (numbers["original_compound"], posts[0], "Compound"),
+            (numbers["bhagyank"], posts[1], "Bhagyank"),
+            (numbers["bhagyank_compound"], posts[1], "Bhagyank total"),
+            (numbers["personal_year"], posts[2], "Personal Year"),
+            (FORECAST_YEAR, posts[2], "Forecast year")
+        ]
 
-        if str(numbers["original_compound"]) not in posts[0]:
-            raise ValueError(
-                f"Original compound missing for {name}"
-            )
+        for value, post, label in required_values:
 
-        if str(numbers["bhagyank"]) not in posts[1]:
-            raise ValueError(f"Bhagyank missing for {name}")
+            if str(value) not in post:
+                raise ValueError(
+                    f"{label} missing for {name}."
+                )
 
-        if str(numbers["bhagyank_compound"]) not in posts[1]:
-            raise ValueError(
-                f"Bhagyank total missing for {name}"
-            )
+        for index, post in enumerate(posts, start=1):
 
-        if str(numbers["personal_year"]) not in posts[2]:
-            raise ValueError(
-                f"Personal Year missing for {name}"
-            )
-
-        if str(FORECAST_YEAR) not in posts[2]:
-            raise ValueError(
-                f"Forecast year missing for {name}"
-            )
-
-        if not all(
-            post and len(post) <= MAX_CHARS
-            for post in posts
-        ):
-            raise ValueError(
-                f"Post length exceeds {MAX_CHARS} for {name}"
-            )
-
-        sources = person["sources"]
+            if not post or len(post) > MAX_CHARS:
+                raise ValueError(
+                    f"Post {index} exceeds character limit for {name}."
+                )
 
         if not any(
-            url in posts[2] for url in sources
+            url in posts[2]
+            for url in person["sources"]
         ):
             raise ValueError(
-                f"Personal Year post needs a verified URL: {name}"
+                f"Missing verified source URL for {name}."
             )
 
         person["posts"] = posts
@@ -689,7 +682,7 @@ def validate_posts(people, generated):
 
 
 # =========================================================
-# STEP 6: BUFFER GRAPHQL REQUEST
+# BUFFER GRAPHQL
 # =========================================================
 
 def buffer_query(query, variables=None):
@@ -707,31 +700,25 @@ def buffer_query(query, variables=None):
         timeout=60
     )
 
-    if not response.ok:
-        raise RuntimeError(
-            f"Buffer HTTP {response.status_code}: "
-            f"{response.text[:2000]}"
-        )
+    response.raise_for_status()
 
     data = response.json()
 
     if data.get("errors"):
+
         raise RuntimeError(
             "Buffer GraphQL error: "
             + json.dumps(data["errors"], ensure_ascii=False)
         )
 
     if "data" not in data:
-        raise RuntimeError(
-            "Unexpected Buffer response: "
-            + json.dumps(data, ensure_ascii=False)
-        )
+        raise RuntimeError("Invalid Buffer response.")
 
     return data["data"]
 
 
 # =========================================================
-# STEP 7: AUTOMATIC X CHANNEL DISCOVERY
+# FIND X CHANNEL AUTOMATICALLY
 # =========================================================
 
 def find_x_channel():
@@ -772,41 +759,40 @@ def find_x_channel():
     }
     """
 
-    x_channels = []
+    channels_found = []
 
     for organization in organizations:
 
-        org_id = organization["id"]
-
-        channel_data = buffer_query(
+        result = buffer_query(
             channel_query,
-            {"organizationId": org_id}
+            {"organizationId": organization["id"]}
         )
 
-        for channel in channel_data.get("channels", []):
+        for channel in result.get("channels", []):
 
             service = (
                 channel.get("service") or ""
             ).lower()
 
-            if service == "twitter" and not channel.get("isDisconnected"):
-                x_channels.append(channel)
+            if service in ("twitter", "x") and not channel.get(
+                "isDisconnected", False
+            ):
+                channels_found.append(channel)
 
-    # Deduplicate.
-    x_channels = list({
+    unique = {
         channel["id"]: channel
-        for channel in x_channels
-    }.values())
+        for channel in channels_found
+    }
 
-    if not x_channels:
-        raise RuntimeError(
-            "No connected X/Twitter channel found."
-        )
+    channels_found = list(unique.values())
+
+    if not channels_found:
+        raise RuntimeError("No connected X channel found.")
 
     if BUFFER_X_CHANNEL_NAME:
 
         matches = [
-            channel for channel in x_channels
+            channel for channel in channels_found
             if BUFFER_X_CHANNEL_NAME.lower()
             in (
                 channel.get("name", "") + " " +
@@ -816,27 +802,19 @@ def find_x_channel():
 
         if len(matches) != 1:
             raise RuntimeError(
-                "BUFFER_X_CHANNEL_NAME did not match "
-                "exactly one channel."
+                "Could not uniquely identify requested X channel."
             )
 
         selected = matches[0]
 
-    elif len(x_channels) == 1:
+    elif len(channels_found) == 1:
 
-        selected = x_channels[0]
+        selected = channels_found[0]
 
     else:
 
-        available = [
-            channel.get("name", channel["id"])
-            for channel in x_channels
-        ]
-
         raise RuntimeError(
-            "Multiple X accounts found. Set "
-            "BUFFER_X_CHANNEL_NAME. Available: "
-            + ", ".join(available)
+            "Multiple X accounts found. Set BUFFER_X_CHANNEL_NAME."
         )
 
     log.info(
@@ -848,7 +826,7 @@ def find_x_channel():
 
 
 # =========================================================
-# STEP 8: PUBLISH ONE CONNECTED X THREAD
+# PUBLISH THREAD
 # =========================================================
 
 def publish_thread(channel_id, posts):
@@ -857,23 +835,7 @@ def publish_thread(channel_id, posts):
         raise ValueError("Empty thread.")
 
     if len(posts) > MAX_THREAD_POSTS:
-        raise ValueError(
-            f"Thread contains {len(posts)} posts. "
-            f"Maximum configured: {MAX_THREAD_POSTS}."
-        )
-
-    for index, post in enumerate(posts, start=1):
-
-        if len(post) > MAX_CHARS:
-            raise ValueError(
-                f"Post {index} exceeds {MAX_CHARS} characters."
-            )
-
-    # IMPORTANT:
-    # Include the main birthday roll-call post as
-    # the FIRST item in the thread array.
-    #
-    # Then include all three posts for each person.
+        raise ValueError("Thread exceeds maximum size.")
 
     thread = [
         {"text": post}
@@ -911,37 +873,46 @@ def publish_thread(channel_id, posts):
         }
     }
 
-    data = buffer_query(
-        mutation,
-        variables
-    )
+    try:
+
+        data = buffer_query(
+            mutation,
+            variables
+        )
+
+    except requests.RequestException as exc:
+
+        raise RuntimeError(
+            "BUFFER_OUTCOME_UNKNOWN: The request may have "
+            "reached Buffer. Verify Buffer before retrying."
+        ) from exc
 
     result = data.get("createPost")
 
     if not result:
         raise RuntimeError(
-            "Buffer returned no createPost result."
+            "BUFFER_OUTCOME_UNKNOWN: No createPost result. "
+            "Verify Buffer before retrying."
         )
 
     if result.get("message"):
         raise RuntimeError(
-            "Buffer publishing failed: "
-            + result["message"]
+            "Buffer rejected the thread: " + result["message"]
         )
 
-    published = result.get("post")
+    post = result.get("post")
 
-    if not published or not published.get("id"):
+    if not post or not post.get("id"):
         raise RuntimeError(
-            "Buffer did not confirm thread creation: "
-            + json.dumps(result, ensure_ascii=False)
+            "BUFFER_OUTCOME_UNKNOWN: Buffer did not confirm "
+            "the post ID. Verify Buffer before retrying."
         )
 
-    return published
+    return post
 
 
 # =========================================================
-# STEP 9: MAIN
+# MAIN
 # =========================================================
 
 def main():
@@ -950,59 +921,48 @@ def main():
 
     parser.add_argument(
         "--dry-run",
-        action="store_true",
-        help="Generate and validate without publishing."
+        action="store_true"
     )
 
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Regenerate even if today's state file exists."
+        help="Override duplicate protection after manual verification."
     )
 
     args = parser.parse_args()
 
     require_environment(dry_run=args.dry_run)
 
-    STATE_DIR.mkdir(
-        parents=True,
-        exist_ok=True
-    )
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
 
-    if STATE_FILE.exists() and not args.force:
+    if not args.force:
+        check_duplicate()
 
-        log.info(
-            "Today's date already processed. "
-            "Skipping duplicate execution."
-        )
-        return
-
-    # 1. Research.
+    # 1. Birthday research.
     research = research_birthdays()
 
-    # 2. Validate living people and birthdays.
+    # 2. Validate candidates.
     people = validate_people(research)
 
     if not people:
 
-        log.warning("No verified living personalities found.")
+        save_state({
+            "date": TODAY.isoformat(),
+            "status": "no_verified_people",
+            "people": []
+        })
 
-        if not args.dry_run:
-            STATE_FILE.write_text(
-                json.dumps({
-                    "date": TODAY.isoformat(),
-                    "status": "no_verified_people",
-                    "people": []
-                }, indent=2),
-                encoding="utf-8"
-            )
+        log.warning(
+            "No sufficiently verified living birthday personalities."
+        )
 
         return
 
-    # 3. Build the main birthday post.
-    main_post, people = build_main_post(people)
+    # 3. Main birthday roll call.
+    main_post = build_main_post(people)
 
-    # 4. Generate three posts for every person.
+    # 4. Individual analysis.
     generated = generate_individual_posts(people)
 
     individual_posts = validate_posts(
@@ -1010,11 +970,11 @@ def main():
         generated
     )
 
-    # 5. Combine everything into one connected thread.
+    # 5. One complete connected thread.
     all_posts = [main_post] + individual_posts
 
     if len(all_posts) > MAX_THREAD_POSTS:
-        raise ValueError("Thread exceeds configured post limit.")
+        raise ValueError("Thread exceeds maximum configured size.")
 
     # 6. Display preview.
     print("\n" + "=" * 65)
@@ -1024,34 +984,59 @@ def main():
 
     for index, post in enumerate(all_posts, start=1):
 
-        print(
-            f"\nPOST {index} | {len(post)} characters"
-        )
-
+        print(f"\nPOST {index} | {len(post)} characters")
         print(post)
         print("-" * 65)
 
-    print(
-        f"\nPeople: {len(people)}"
-        f"\nTotal posts: {len(all_posts)}"
-    )
+    print(f"\nPeople: {len(people)}")
+    print(f"Total posts: {len(all_posts)}")
 
     if args.dry_run:
 
-        log.info("Dry run successful. Nothing published.")
+        log.info("Dry run completed. Nothing published.")
         return
 
-    # 7. Discover X channel.
+    # 7. Discover channel.
     channel_id = find_x_channel()
 
-    # 8. Publish.
-    published = publish_thread(
-        channel_id,
-        all_posts
-    )
+    # 8. Persist publishing intent BEFORE calling Buffer.
+    # If the workflow crashes during publishing, the next
+    # run will stop for manual verification.
 
-    # 9. Save history only after Buffer confirms creation.
-    record = {
+    save_state({
+        "date": TODAY.isoformat(),
+        "status": "publishing",
+        "buffer_channel_id": channel_id,
+        "people": people,
+        "posts": all_posts,
+        "started_at_ist": datetime.now(TZ).isoformat()
+    })
+
+    try:
+
+        # 9. Publish immediately.
+        published = publish_thread(
+            channel_id,
+            all_posts
+        )
+
+    except Exception as error:
+
+        save_state({
+            "date": TODAY.isoformat(),
+            "status": "publishing",
+            "buffer_channel_id": channel_id,
+            "error": str(error),
+            "people": people,
+            "posts": all_posts,
+            "needs_manual_verification": True,
+            "updated_at_ist": datetime.now(TZ).isoformat()
+        })
+
+        raise
+
+    # 10. Save successful submission.
+    save_state({
         "date": TODAY.isoformat(),
         "forecast_year": FORECAST_YEAR,
         "status": "submitted_to_buffer",
@@ -1061,29 +1046,25 @@ def main():
         "main_post": main_post,
         "people": people,
         "posts": all_posts,
-        "created_at_ist": datetime.now(TZ).isoformat()
-    }
+        "published_at_ist": datetime.now(TZ).isoformat()
+    })
 
-    STATE_FILE.write_text(
-        json.dumps(
-            record,
-            indent=2,
-            ensure_ascii=False
-        ),
-        encoding="utf-8"
-    )
-
-    log.info("Successfully submitted the thread to Buffer.")
+    log.info("Thread submitted successfully.")
     log.info("Buffer post ID: %s", published["id"])
 
+
+# =========================================================
+# ENTRY POINT
+# =========================================================
 
 if __name__ == "__main__":
 
     try:
+
         main()
 
     except Exception as error:
 
-        log.exception("Mauksh automation failed: %s", error)
+        log.exception("Automation failed: %s", error)
 
         sys.exit(1)
