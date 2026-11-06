@@ -583,5 +583,95 @@
         "node_type": "mean"
       }
     ]
+  },
+  {
+    "date": "06 November 2026",
+    "post_id": "6aed2058f3498efda75da0fb",
+    "post": "Mauksh Daily Career Horoscope\n06 November 2026\n\n♈ Aries: A long-standing client may return your contract with liability and deliverable changes, prompting multiple redlines and negotiation; expect staged payments or delayed final invoice release.\n\n♉ Taurus: Procurement may flag a vendor non-conformance, asking you to lead acceptance tests and resubmit SLAs; payments could be released in phases after documented fixes.\n\n♊ Gemini: An industry contact may request a compact prototype demo with a strict acceptance checklist, prompting repeated clarifications and negotiation for a small escrowed pilot fee.\n\n♋ Cancer: Management might ask you to step in as acting lead for a sensitive client project, requiring daily reports and negotiation of short-term compensation or title.\n\n♌ Leo: A partner may commission a short branded training module, prompting editorial rounds and negotiation over usage rights and staged payments before final credit.\n\n♍ Virgo: Finance could request itemised invoices and backup receipts for recent work, triggering resubmission and phased payment until your documentation satisfies approvers.\n\n♎ Libra: You may be named spokesperson for a joint initiative, then asked to sign indemnities and credit limits; negotiation could delay launch and payment.\n\n♏ Scorpio: A counterparty might request a confidential project closeout under NDA, requiring detailed paperwork and offering a discreet retainer or private recommendation instead of public credit.\n\n♐ Sagittarius: An industry consortium could invite you to co-lead a short funded pilot, requesting a feasibility note and escrowed funds subject to strict acceptance criteria.\n\n♑ Capricorn: Executives may ask you to present project results with live Q&A, prompting last-minute edits and possible deferred decisions pending follow-up audit.\n\n♒ Aquarius: A partner might request licensing or IP assignment documents for market entry, triggering legal redlines and staged payments until compliance checks complete.\n\n♓ Pisces: A collaborator may send a revised revenue‑share draft asking you to define acceptance criteria and sign off; funds might be released in milestones thereafter.",
+    "transits": [
+      {
+        "planet": "Sun",
+        "sign": "Libra",
+        "degree": 19.6215,
+        "longitude": 199.621482,
+        "daily_speed": 1.003031,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Moon",
+        "sign": "Virgo",
+        "degree": 14.3585,
+        "longitude": 164.358457,
+        "daily_speed": 12.940941,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mars",
+        "sign": "Cancer",
+        "degree": 26.9952,
+        "longitude": 116.995159,
+        "daily_speed": 0.485515,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mercury",
+        "sign": "Libra",
+        "degree": 15.8124,
+        "longitude": 195.812377,
+        "daily_speed": -1.228726,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Jupiter",
+        "sign": "Leo",
+        "degree": 0.6964,
+        "longitude": 120.696441,
+        "daily_speed": 0.108818,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Venus",
+        "sign": "Virgo",
+        "degree": 29.8529,
+        "longitude": 179.85287,
+        "daily_speed": -0.314349,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Saturn",
+        "sign": "Pisces",
+        "degree": 14.7362,
+        "longitude": 344.736182,
+        "daily_speed": -0.056757,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Rahu",
+        "sign": "Aquarius",
+        "degree": 1.56,
+        "longitude": 301.560031,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated",
+        "node_type": "mean"
+      },
+      {
+        "planet": "Ketu",
+        "sign": "Leo",
+        "degree": 1.56,
+        "longitude": 121.560031,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "calculated_opposite_of_rahu",
+        "node_type": "mean"
+      }
+    ]
   }
 ]
