@@ -79,26 +79,51 @@ def save_history(history):
 
 
 def extract_json(text):
+
     text = str(text or "").strip()
 
+    if not text:
+        raise ValueError("OpenAI returned an empty response.")
+
+    # Remove Markdown fences
     text = re.sub(
         r"^```(?:json)?\s*",
         "",
         text,
         flags=re.IGNORECASE
     )
+
     text = re.sub(r"\s*```$", "", text)
 
+    # First try direct JSON parsing
     try:
-        return json.loads(text)
+        result = json.loads(text)
+
+        if isinstance(result, dict):
+            return result
+
     except json.JSONDecodeError:
         pass
 
-    start = text.find("{")
-    end = text.rfind("}")
+    # Search for a valid JSON object inside surrounding text
+    decoder = json.JSONDecoder()
 
-    if start != -1 and end > start:
-        return json.loads(text[start:end + 1])
+    for index, character in enumerate(text):
+
+        if character != "{":
+            continue
+
+        try:
+            result, end = decoder.raw_decode(text[index:])
+
+            if isinstance(result, dict):
+                return result
+
+        except json.JSONDecodeError:
+            continue
+
+    log("JSON parsing failed. Original response follows:")
+    log(text[:12000])
 
     raise ValueError("OpenAI did not return valid JSON.")
 
@@ -175,6 +200,68 @@ def ask_openai(prompt, use_web_search=False):
     return response.output_text
 
 
+# JSON RECOVERY FOR RESEARCH
+
+def normalize_research_json(raw):
+
+    log("Converting birthday research into structured JSON...")
+
+    prompt = """
+Convert the following birthday research into valid JSON.
+
+Return exactly this structure:
+
+{
+  "people": [
+    {
+      "name": "Full name",
+      "date_of_birth": "YYYY-MM-DD",
+      "profession": "Profession",
+      "verified_alive": true,
+      "life_summary": "Factual career summary",
+      "notable_facts": [
+        "Verified achievement"
+      ],
+      "sources": [
+        {
+          "title": "Source title",
+          "url": "https://example.com",
+          "supports": "What it verifies"
+        }
+      ]
+    }
+  ]
+}
+
+STRICT RULES:
+
+1. Use only information in the research provided.
+2. Never invent names, dates, achievements or URLs.
+3. Keep only Indian personalities.
+4. Keep only people explicitly identified as living.
+5. Preserve source URLs exactly.
+6. Do not manufacture a second source.
+7. If information is insufficient, exclude that person.
+8. If no person qualifies, return an empty people array.
+9. Return JSON only.
+
+Research to convert:
+""" + json.dumps(raw[:30000], ensure_ascii=False)
+
+    result = ask_openai(prompt)
+
+    data = extract_json(result)
+
+    if not isinstance(data.get("people"), list):
+        raise ValueError(
+            "Normalized research does not contain a people array."
+        )
+
+    log("Research successfully converted into JSON.")
+
+    return data
+
+
 # BIRTHDAY RESEARCH
 
 def research_people():
@@ -187,10 +274,10 @@ Find famous Indian personalities whose birthday is today.
 Include people from sports, business, cinema,
 literature, science, public life and arts.
 
-Follow these rules:
+STRICT RULES:
 
 1. Include only Indian personalities.
-2. Include only people who are currently alive.
+2. Include only people currently alive.
 3. Their day and month of birth must match today.
 4. Verify their birth date using at least two
    independent reliable sources.
@@ -200,8 +287,7 @@ Follow these rules:
 7. Do not rely only on Wikipedia.
 8. Never invent dates or achievements.
 9. Do not include uncertain birthdays.
-10. Give priority to people with documented careers
-    that can be meaningfully analysed.
+10. Prioritise people with documented careers.
 
 Return JSON in this format:
 
@@ -240,14 +326,31 @@ Do not guess.
     log("Starting birthday research...")
 
     raw = ask_openai(prompt, use_web_search=True)
-    data = extract_json(raw)
+
+    # First attempt: parse the research response directly.
+    try:
+
+        data = extract_json(raw)
+
+    except ValueError:
+
+        # Second attempt: convert research into JSON.
+        log("Direct JSON extraction failed. Starting recovery.")
+
+        data = normalize_research_json(raw)
 
     people = data.get("people", [])
+
+    if not isinstance(people, list):
+        raise ValueError("Invalid people data returned by OpenAI.")
+
     verified = []
     seen = set()
 
     for person in people:
+
         try:
+
             dob = datetime.strptime(
                 person["date_of_birth"],
                 "%Y-%m-%d"
@@ -259,17 +362,26 @@ Do not guess.
             if dob >= TODAY:
                 continue
 
-            if not person.get("verified_alive"):
+            if person.get("verified_alive") is not True:
                 continue
 
             sources = person.get("sources", [])
 
             valid_sources = [
                 source for source in sources
-                if str(source.get("url", "")).startswith("https://")
+                if isinstance(source, dict)
+                and str(source.get("url", "")).startswith("https://")
+                and source.get("title")
+                and source.get("supports")
             ]
 
-            if len(valid_sources) < 2:
+            # Require two distinct source URLs.
+            unique_urls = {
+                source["url"]
+                for source in valid_sources
+            }
+
+            if len(unique_urls) < 2:
                 continue
 
             name = clean_text(person.get("name"))
@@ -288,7 +400,10 @@ Do not guess.
         except (ValueError, TypeError, KeyError):
             continue
 
-    log(f"Birthday research completed. Found {len(verified)} people.")
+    log(
+        f"Birthday research completed. "
+        f"Found {len(verified)} people."
+    )
 
     return verified
 
