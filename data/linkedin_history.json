@@ -853,5 +853,95 @@
         "node_type": "mean"
       }
     ]
+  },
+  {
+    "date": "09 November 2026",
+    "post_id": "6af114c3004e4879a7ed3e72",
+    "post": "Mauksh Daily Career Horoscope\n09 November 2026\n\n♈ Aries: A partner returns a heavily redlined contract; you may need to consolidate cross‑team edits and negotiate staged invoices before their acceptance releases payment.\n\n♉ Taurus: Procurement may flag a vendor non‑conformance and ask you to run acceptance tests, rewrite SLAs and secure sign‑offs before payments resume.\n\n♊ Gemini: A contact could request a tight prototype and two‑slide pitch with strict acceptance metrics; insist on escrowed milestones before delivering extensive revisions.\n\n♋ Cancer: Management might ask you to act as interim regional lead, handling client escalations, daily reporting and resource reallocations under short notice.\n\n♌ Leo: A partner may commission a short expert explainer; legal redlines around usage and payment might force edits and delayed honoraria.\n\n♍ Virgo: Finance could request corrected invoices and an itemised rate card; you may need to resubmit backup receipts to unlock staged payments.\n\n♎ Libra: Senior leaders may name you spokesperson for an external initiative, then legal asks for indemnities and credit limits before any honorarium is confirmed.\n\n♏ Scorpio: You're likely assigned a confidential vendor closeout under NDA, negotiating final tranches and written acceptance before discreet payment or private references are issued.\n\n♐ Sagittarius: A consortium might invite you to draft a compact feasibility note; funds and introductions could be escrowed pending institution sign‑offs and strict deliverables.\n\n♑ Capricorn: Executives may appoint you to lead a standards alignment, requiring audit‑ready documentation and repeated legal edits before board approval or formal credit.\n\n♒ Aquarius: A partner could request IP assignment or licensing briefs for a filing; expect multiple legal redrafts and staged consultancy fees upon clearance.\n\n♓ Pisces: A collaborator may resend a revised revenue‑share draft asking you to define milestones and late‑payment penalties before releasing any interim payments.",
+    "transits": [
+      {
+        "planet": "Sun",
+        "sign": "Libra",
+        "degree": 22.633,
+        "longitude": 202.632951,
+        "daily_speed": 1.004581,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Moon",
+        "sign": "Libra",
+        "degree": 22.3787,
+        "longitude": 202.378673,
+        "daily_speed": 12.406821,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mars",
+        "sign": "Cancer",
+        "degree": 28.435,
+        "longitude": 118.435015,
+        "daily_speed": 0.474276,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mercury",
+        "sign": "Libra",
+        "degree": 12.6498,
+        "longitude": 192.649765,
+        "daily_speed": -0.83375,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Jupiter",
+        "sign": "Leo",
+        "degree": 1.0115,
+        "longitude": 121.011516,
+        "daily_speed": 0.101185,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Venus",
+        "sign": "Virgo",
+        "degree": 29.0886,
+        "longitude": 179.088616,
+        "daily_speed": -0.194139,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Saturn",
+        "sign": "Pisces",
+        "degree": 14.5718,
+        "longitude": 344.571778,
+        "daily_speed": -0.052799,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Rahu",
+        "sign": "Aquarius",
+        "degree": 1.4011,
+        "longitude": 301.401055,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated",
+        "node_type": "mean"
+      },
+      {
+        "planet": "Ketu",
+        "sign": "Leo",
+        "degree": 1.4011,
+        "longitude": 121.401055,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "calculated_opposite_of_rahu",
+        "node_type": "mean"
+      }
+    ]
   }
 ]
