@@ -497,30 +497,30 @@ def get_threads_channel_id():
 
 
 # ==================================================
-# UPLOAD TO FREEIMAGE.HOST
+# UPLOAD TO PICRD
 # ==================================================
 
-def upload_to_freeimage_host(image_path):
-    api_key = os.environ.get("FREEIMAGE_HOST_API_KEY")
+def upload_to_picrd(image_path):
+    api_key = os.environ.get("PIC")
 
     if not api_key:
-        raise RuntimeError(
-            "FREEIMAGE_HOST_API_KEY is missing from the environment."
-        )
+        raise RuntimeError("PIC secret is missing.")
 
     with open(image_path, "rb") as file:
         response = requests.post(
-            "https://freeimage.host/api/1/upload",
-            params={
-                "key": api_key,
-                "format": "json",
+            "https://picrd.com/api/upload",
+            headers={
+                "Authorization": f"Bearer {api_key}",
             },
             files={
-                "source": (
+                "file": (
                     "mauksh_daily_horoscope.jpg",
                     file,
                     "image/jpeg",
                 )
+            },
+            data={
+                "ttl": "24h",
             },
             timeout=120,
         )
@@ -531,23 +531,23 @@ def upload_to_freeimage_host(image_path):
         result = response.json()
     except ValueError as exc:
         raise RuntimeError(
-            "Freeimage.host returned non-JSON data: "
+            "Picrd returned non-JSON data: "
             + response.text[:500]
         ) from exc
 
-    image_data = result.get("image") or {}
-    image_url = image_data.get("url")
+    image_url = result.get("raw_url")
 
     if not image_url:
         raise RuntimeError(
-            "Freeimage.host did not return an image URL: "
+            "Picrd did not return raw_url: "
             + json.dumps(result)
         )
 
-    print("Image uploaded successfully to Freeimage.host.")
-    print("Direct image URL:", image_url)
+    print("Image uploaded successfully to Picrd.")
+    print("Image URL:", image_url)
+    print("Picrd Image ID:", result.get("id"))
+    print("Image expiry:", result.get("expires_at"))
 
-    # This API response does not use Picrd's delete_url.
     return image_url, None
 
 
@@ -847,7 +847,7 @@ def main():
 
     # Upload once; share the same image URL
     print("\n======= IMAGE UPLOAD ========\n")
-    image_url, _ = upload_to_freeimage_host(image_path)
+    image_url, _ = upload_to_picrd(image_path)
 
     # Instagram
     print("\n========== INSTAGRAM ==========\n")
