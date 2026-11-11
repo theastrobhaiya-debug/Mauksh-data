@@ -26,6 +26,8 @@ jobs:
 
       - name: Generate and publish horoscope
         env:
+          PIC: ${{ secrets.pic }}
+
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
           # Instagram Buffer account
