@@ -1,10 +1,5 @@
 [
   {
-    "date": "28 October 2026",
-    "post_id": "6ae14270d689807dda1517aa",
-    "post": "Mauksh Daily Career Horoscope\n28 October 2026\n\n♈ Aries: An external partner may offer you a visible leadership role on a joint project, requiring formal negotiation of authority and timelines; clarify boundaries before accepting.\n\n♉ Taurus: A peer review or vendor dispute could trigger an operational audit of your processes, requiring rapid corrective actions and documented evidence to avert formal penalties.\n\n♊ Gemini: An institute may cite your brief and request a compact pilot proposal with deliverables and metrics; deliver a prototype quickly to convert interest into funded trial.\n\n♋ Cancer: Management might propose reallocating your team's workspace or local responsibilities, prompting a short consultation period; advocate for resource protections and clear transition milestones.\n\n♌ Leo: You're likely asked to present a concise case summary or lead a short Q&A; precise, time-bound responses could generate peer referrals or consultancy leads.\n\n♍ Virgo: A client or manager may request formal fee terms for your services, prompting submission of an itemised rate card and milestone-based invoicing to secure payment.\n\n♎ Libra: You may be approached with a co-branding proposal while you consider relaunching independently; insist on contractual limits to protect brand identity and revenue shares.\n\n♏ Scorpio: A discreet advisory assignment could arrive under strict confidentiality, offering deferred equity or non-public compensation; require written deliverables and staged payments before committing.\n\n♐ Sagittarius: An industry association may invite you to co-lead a short funded initiative that provides introductions and small contracts; clarify deliverables and follow-up pathways.\n\n♑ Capricorn: You could be offered an acting senior assignment or public-facing project with immediate oversight; document success metrics and communicate constraints to protect future promotion claims.\n\n♒ Aquarius: A certifying body or external partner may request a concise compliance opinion or advisory note; ensure citations, approvals and clear scopes to convert endorsement into institutional access.\n\n♓ Pisces: A partner might propose restructuring a revenue split or buying a stake in a joint project, requiring due diligence, explicit milestones and clear cashflow terms."
-  },
-  {
     "date": "29 October 2026",
     "post_id": "6ae2940e42598d490d76b37a",
     "post": "Mauksh Daily Career Horoscope\n29 October 2026\n\n♈ Aries: You may be formally named as the lead liaison for a joint project, requiring signatures and public coordination; negotiate responsibilities and fee or time commitments before agreeing.\n\n♉ Taurus: A vendor dispute could land on your desk with a short deadline; lead remediation, document fixes and secure written sign‑off to avoid recurring billing or SLA escalation.\n\n♊ Gemini: A concise pilot proposal or creative demo may attract a networked sponsor offering a small funded trial; define deliverables and metrics to convert visibility into repeat work.\n\n♋ Cancer: Management may propose relocating your team or altering reporting lines, requiring you to document outcomes and secure resource commitments to protect public reputation.\n\n♌ Leo: You're asked to prepare a concise brief or external summary that may be cited by stakeholders; ensure factual accuracy and clearance to preserve advisory credibility.\n\n♍ Virgo: A client or manager may request a revised fee schedule or one‑off compensation tied to short deliverables; submit itemised justification and milestone invoices to secure payment.\n\n♎ Libra: You may be presented publicly as the face of a short joint initiative; define scope and decline open‑ended obligations before accepting visible responsibilities.\n\n♏ Scorpio: A confidential remote secondment or funded off‑site consultancy might be offered under fixed term; insist on NDAs, written milestones and explicit expense coverage.\n\n♐ Sagittarius: A contact in your network may bring a commissioned pilot or first paid contract requiring rapid delivery; clarify payment schedule and short‑term deliverables to convert introductions.\n\n♑ Capricorn: A formal acting appointment or short leadership mandate could be offered with measurable targets; document early wins and communicate constraints to support promotion discussion.\n\n♒ Aquarius: You may be invited to contribute to a syllabus, certification or short accredited course; confirm citation, authorship and future consultancy terms before committing time.\n\n♓ Pisces: A partner might reopen revenue‑share terms or request milestone sign‑offs for held payments; propose clear milestones and staged releases to stabilise personal cashflow."
@@ -2437,6 +2432,96 @@
         "sign": "Leo",
         "degree": 0.5002,
         "longitude": 120.500192,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "calculated_opposite_of_rahu",
+        "node_type": "mean"
+      }
+    ]
+  },
+  {
+    "date": "27 November 2026",
+    "post_id": "6b08cf929131f7416c5cdf1f",
+    "post": "Mauksh Daily Career Horoscope\n27 November 2026\n\n♈ Aries: A commercial partner returns your SOW with staged acceptance tests, asking you to supply QA logs and renegotiate milestones before the first payment tranche might be released.\n\n♉ Taurus: Procurement reopens a vendor onboarding audit and could ask you to run acceptance tests, rewrite SLAs and present a remediation plan to finance before payments resume.\n\n♊ Gemini: After a long wait you might receive an interview request that includes a live fifteen‑minute skills test and short demo, delaying hiring decisions until stakeholders accept results.\n\n♋ Cancer: A senior client may ask you to present a concise deliverable brief and audited receipts live, requiring immediate Q&A and holding a bonus or retainer until reconciled.\n\n♌ Leo: You're likely asked to chair a client showcase or record an explainer, but legal might demand limited usage rights and staged honoraria before publication or payment is confirmed.\n\n♍ Virgo: Finance could return a project invoice asking you to resubmit itemised fees and corrected timesheets, forcing a rushed audit and delaying release of funds until approvers sign.\n\n♎ Libra: Communications may name you the lead on a co‑branded release, then legal could insist on indemnities and a limited byline, postponing honorarium until terms are signed.\n\n♏ Scorpio: A counterparty might offer a discreet advisory under NDA, requesting a close‑out memo and milestone deliverables; compensation could be private and released only on formal acceptance.\n\n♐ Sagittarius: An industry association may invite you to co‑author a funded feasibility note with funds held in escrow, requiring a short proposal and institutional sign‑off before payment release.\n\n♑ Capricorn: A commercial partner could ask you to finalise IP and licensing language, prompting detailed legal redlines and phased royalties that might delay product launch and first payouts.\n\n♒ Aquarius: An institutional partner may offer you a named liaison seat on a filing, but legal could require restrictive publicity terms and staged consultancy fees released after clearance.\n\n♓ Pisces: Executives might request audited KPIs and reconciled vendor receipts for an operations review, requiring live Q&A and holding bonuses or raises until reviewers verify figures.",
+    "transits": [
+      {
+        "planet": "Sun",
+        "sign": "Scorpio",
+        "degree": 10.7807,
+        "longitude": 220.780674,
+        "daily_speed": 1.011617,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Moon",
+        "sign": "Gemini",
+        "degree": 18.0464,
+        "longitude": 78.046368,
+        "daily_speed": 14.915917,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mars",
+        "sign": "Leo",
+        "degree": 6.274,
+        "longitude": 126.273959,
+        "daily_speed": 0.392306,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Mercury",
+        "sign": "Libra",
+        "degree": 22.5542,
+        "longitude": 202.554154,
+        "daily_speed": 1.35894,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Jupiter",
+        "sign": "Leo",
+        "degree": 2.387,
+        "longitude": 122.386972,
+        "daily_speed": 0.050333,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Venus",
+        "sign": "Libra",
+        "degree": 1.8578,
+        "longitude": 181.857789,
+        "daily_speed": 0.460504,
+        "motion": "direct",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Saturn",
+        "sign": "Pisces",
+        "degree": 13.866,
+        "longitude": 343.865996,
+        "daily_speed": -0.024594,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated"
+      },
+      {
+        "planet": "Rahu",
+        "sign": "Aquarius",
+        "degree": 0.4472,
+        "longitude": 300.4472,
+        "daily_speed": -0.052992,
+        "motion": "retrograde",
+        "confidence": "ephemeris_calculated",
+        "node_type": "mean"
+      },
+      {
+        "planet": "Ketu",
+        "sign": "Leo",
+        "degree": 0.4472,
+        "longitude": 120.4472,
         "daily_speed": -0.052992,
         "motion": "retrograde",
         "confidence": "calculated_opposite_of_rahu",
